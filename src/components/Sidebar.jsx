@@ -4,13 +4,14 @@ const NAV_ITEMS = [
   {
     id: 'peminjaman',
     label: 'Peminjaman Kendaraan',
+    shortLabel: 'Peminjaman',
     icon: CarIcon,
   },
 ]
 
 export default function Sidebar({ activeModule, onNavigate, onSignOut }) {
   return (
-    <aside className="w-60 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col min-h-0">
+    <aside className="hidden lg:flex flex-col w-60 flex-shrink-0 bg-white border-r border-gray-200 min-h-0">
       {/* Nav items */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         <p className="px-3 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
@@ -49,5 +50,38 @@ export default function Sidebar({ activeModule, onNavigate, onSignOut }) {
         </button>
       </div>
     </aside>
+  )
+}
+
+export function BottomNav({ activeModule, onNavigate, onSignOut }) {
+  return (
+    <nav
+      className="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-10 flex items-stretch"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      {NAV_ITEMS.map(({ id, shortLabel, icon: Icon }) => {
+        const active = activeModule === id
+        return (
+          <button
+            key={id}
+            onClick={() => onNavigate(id)}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors cursor-pointer ${
+              active ? 'text-brand-500' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            <Icon className={`w-5 h-5 ${active ? 'text-brand-500' : 'text-gray-400'}`} />
+            {shortLabel}
+            {active && <span className="absolute top-0 h-0.5 w-8 bg-brand-400 rounded-full" />}
+          </button>
+        )
+      })}
+      <button
+        onClick={onSignOut}
+        className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+      >
+        <LogOutIcon className="w-5 h-5" />
+        Keluar
+      </button>
+    </nav>
   )
 }

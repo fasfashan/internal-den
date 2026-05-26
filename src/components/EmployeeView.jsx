@@ -218,10 +218,10 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
                         {b.status === 'Menunggu Serah Terima' && (
                           <PhotoUploadSection
                             title="Foto Kondisi Kendaraan Sebelum Digunakan"
-                            description="Unggah foto kendaraan sebelum perjalanan dimulai"
+                            description="Unggah 4 foto kendaraan dari berbagai sisi sebelum perjalanan dimulai"
                             confirmLabel="Konfirmasi Serah Terima & Mulai Perjalanan"
-                            existingPhoto={bookingPhotos.pre}
-                            onConfirm={dataUrl => onUploadPrePhoto(b.id, dataUrl)}
+                            existingPhotos={bookingPhotos.pre}
+                            onConfirm={photos => onUploadPrePhoto(b.id, photos)}
                           />
                         )}
 
@@ -230,10 +230,10 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
                             <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
                             <PhotoUploadSection
                               title="Foto Kondisi Kendaraan Setelah Digunakan"
-                              description="Unggah foto kendaraan setelah perjalanan selesai"
+                              description="Unggah 4 foto kendaraan dari berbagai sisi setelah perjalanan selesai"
                               confirmLabel="Tandai Perjalanan Selesai"
-                              existingPhoto={bookingPhotos.post}
-                              onConfirm={dataUrl => onUploadPostPhoto(b.id, dataUrl)}
+                              existingPhotos={bookingPhotos.post}
+                              onConfirm={photos => onUploadPostPhoto(b.id, photos)}
                             />
                           </div>
                         )}
@@ -258,23 +258,49 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
   )
 }
 
-function PhotoUploadSection({ title, description, confirmLabel, existingPhoto, onConfirm }) {
-  const [preview, setPreview] = useState(existingPhoto ?? null)
+function PhotoUploadSection({ title, description, confirmLabel, existingPhotos, onConfirm }) {
+  const SLOT_COUNT = 4
+  const [previews, setPreviews] = useState(() =>
+    Array.isArray(existingPhotos) ? [...existingPhotos] : Array(SLOT_COUNT).fill(null)
+  )
   const [confirmed, setConfirmed] = useState(false)
-  const inputRef = useRef(null)
 
-  function handleFile(e) {
+  const inputRef0 = useRef(null)
+  const inputRef1 = useRef(null)
+  const inputRef2 = useRef(null)
+  const inputRef3 = useRef(null)
+  const inputRefs = [inputRef0, inputRef1, inputRef2, inputRef3]
+
+  const filledCount = previews.filter(Boolean).length
+  const allFilled = filledCount === SLOT_COUNT
+
+  function handleFile(index, e) {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = evt => setPreview(evt.target.result)
+    reader.onload = evt => {
+      setPreviews(prev => {
+        const next = [...prev]
+        next[index] = evt.target.result
+        return next
+      })
+    }
     reader.readAsDataURL(file)
   }
 
+  function handleRemove(index) {
+    setPreviews(prev => {
+      const next = [...prev]
+      next[index] = null
+      return next
+    })
+    if (inputRefs[index].current) inputRefs[index].current.value = ''
+  }
+
   function handleConfirm() {
-    if (!preview) return
+    if (!allFilled) return
     setConfirmed(true)
-    onConfirm(preview)
+    onConfirm(previews)
   }
 
   return (
@@ -282,54 +308,75 @@ function PhotoUploadSection({ title, description, confirmLabel, existingPhoto, o
       <p className="text-xs font-semibold text-gray-800 mb-0.5">{title}</p>
       <p className="text-xs text-gray-400 mb-3">{description}</p>
 
-      {preview ? (
-        <div className="space-y-2">
-          <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-            <img src={preview} alt="preview" className="w-full max-h-40 object-cover" />
-            {!confirmed && (
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {previews.map((preview, i) => (
+          <div key={i}>
+            {preview ? (
+              <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                <img src={preview} alt={`Foto ${i + 1}`} className="w-full h-28 object-cover" />
+                {!confirmed && (
+                  <button
+                    onClick={() => handleRemove(i)}
+                    className="absolute top-1 right-1 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow text-gray-500 hover:text-red-500 transition-colors cursor-pointer"
+                  >
+                    <XIcon className="w-3 h-3" />
+                  </button>
+                )}
+                <span className="absolute bottom-1 left-1 text-[10px] font-medium bg-black/40 text-white px-1.5 py-0.5 rounded">
+                  Foto {i + 1}
+                </span>
+              </div>
+            ) : (
               <button
-                onClick={() => { setPreview(null); if (inputRef.current) inputRef.current.value = '' }}
-                className="absolute top-2 right-2 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow text-gray-500 hover:text-red-500 transition-colors cursor-pointer"
+                type="button"
+                onClick={() => inputRefs[i].current?.click()}
+                className="w-full h-28 rounded-lg border-2 border-dashed border-gray-200 hover:border-brand-400 hover:bg-brand-50 active:bg-brand-100 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:text-brand-500 transition-colors cursor-pointer"
               >
-                <XIcon className="w-3 h-3" />
+                <CameraIcon className="w-6 h-6" />
+                <span className="text-[10px] font-semibold text-gray-400">Foto {i + 1}</span>
               </button>
             )}
+            <input ref={inputRefs[i]} type="file" accept="image/*" className="hidden" onChange={e => handleFile(i, e)} />
           </div>
-          {!confirmed && (
-            <button
-              onClick={handleConfirm}
-              className="w-full flex items-center justify-center gap-2 bg-brand-400 hover:bg-brand-500 text-white text-xs font-medium py-2 rounded-lg transition-colors cursor-pointer"
-            >
-              <CheckIcon className="w-3.5 h-3.5" />
-              {confirmLabel}
-            </button>
-          )}
-        </div>
-      ) : (
+        ))}
+      </div>
+
+      {!confirmed && (
         <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="w-full border-2 border-dashed border-gray-200 hover:border-brand-400 hover:bg-brand-50 rounded-lg py-6 flex flex-col items-center gap-1.5 text-gray-400 hover:text-brand-500 transition-colors cursor-pointer"
+          onClick={handleConfirm}
+          disabled={!allFilled}
+          className={`w-full flex items-center justify-center gap-2 text-xs font-medium py-2.5 rounded-lg transition-colors ${
+            allFilled
+              ? 'bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white cursor-pointer'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}
         >
-          <CameraIcon className="w-6 h-6" />
-          <span className="text-xs font-medium">Klik untuk mengunggah foto</span>
-          <span className="text-[11px]">JPG, PNG, WEBP</span>
+          <CheckIcon className="w-3.5 h-3.5" />
+          {allFilled ? confirmLabel : `Unggah ${SLOT_COUNT - filledCount} foto lagi`}
         </button>
       )}
-
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
     </div>
   )
 }
 
 function PhotoDisplay({ label, src }) {
+  const photos = Array.isArray(src) ? src.filter(Boolean) : []
   return (
     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
       <div className="px-3 py-2 border-b border-gray-100">
         <p className="text-xs font-medium text-gray-500">{label}</p>
       </div>
-      {src ? (
-        <img src={src} alt={label} className="w-full max-h-40 object-cover" />
+      {photos.length > 0 ? (
+        <div className="grid grid-cols-2 gap-1 p-1">
+          {photos.map((photo, i) => (
+            <div key={i} className="relative rounded overflow-hidden">
+              <img src={photo} alt={`${label} ${i + 1}`} className="w-full h-20 object-cover" />
+              <span className="absolute bottom-1 left-1 text-[10px] font-medium bg-black/40 text-white px-1.5 py-0.5 rounded">
+                {i + 1}
+              </span>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-1.5 py-6 text-gray-300">
           <ImageIcon className="w-6 h-6" />

@@ -4,7 +4,7 @@ import EmployeeLoginPage from './pages/EmployeeLoginPage'
 import AdminLoginPage from './pages/AdminLoginPage'
 import EmployeeView from './components/EmployeeView'
 import AdminView from './components/AdminView'
-import Sidebar from './components/Sidebar'
+import Sidebar, { BottomNav } from './components/Sidebar'
 import { LogOutIcon } from './components/Icons'
 
 const MOCK_USERS = {
@@ -148,10 +148,11 @@ function AppShell({ user, module, onNavigate, onSignOut, children }) {
 
       <div className="flex flex-1 min-h-0">
         <Sidebar activeModule={module} onNavigate={onNavigate} onSignOut={onSignOut} />
-        <main className="flex-1 overflow-auto px-6 py-8">
+        <main className="flex-1 overflow-auto px-4 sm:px-6 py-5 sm:py-8 pb-24 lg:pb-8">
           {children}
         </main>
       </div>
+      <BottomNav activeModule={module} onNavigate={onNavigate} onSignOut={onSignOut} />
     </div>
   )
 }
