@@ -14,9 +14,15 @@ const UNIT_KERJA = [
   'Inspektorat',
 ]
 
+const CAR_TYPES = ['Zenix', 'Veloz', 'Xpander']
+const FUEL_LEVELS = ['E', '1/4', '1/2', '3/4', 'F']
+
 const EMPTY_FORM = {
   name: '',
+  driverName: '',
   division: '',
+  carType: '',
+  plateNumber: '',
   destination: '',
   dateStart: '',
   dateEnd: '',
@@ -24,6 +30,18 @@ const EMPTY_FORM = {
 }
 
 const NEEDS_ACTION = ['Menunggu Serah Terima', 'Sedang Digunakan']
+
+const smallInput = [
+  'w-full px-2.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 outline-none',
+  'focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-all',
+  'placeholder:text-gray-400 bg-white disabled:bg-gray-50 disabled:text-gray-400',
+].join(' ')
+
+const smallSelect = [
+  'w-full px-2.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 outline-none',
+  'focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-all',
+  'bg-white disabled:bg-gray-50 disabled:text-gray-400 cursor-pointer',
+].join(' ')
 
 function formatDateTime(dt) {
   if (!dt) return '-'
@@ -42,14 +60,17 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
 
   function validate() {
     const e = {}
-    if (!form.name.trim()) e.name = 'Nama wajib diisi'
-    if (!form.division) e.division = 'Unit kerja wajib dipilih'
+    if (!form.name.trim())        e.name        = 'Nama peminjam wajib diisi'
+    if (!form.driverName.trim())  e.driverName  = 'Nama pengemudi wajib diisi'
+    if (!form.division)           e.division    = 'Unit kerja wajib dipilih'
+    if (!form.carType)            e.carType     = 'Jenis mobil wajib dipilih'
+    if (!form.plateNumber.trim()) e.plateNumber = 'Nomor polisi wajib diisi'
     if (!form.destination.trim()) e.destination = 'Tujuan wajib diisi'
-    if (!form.dateStart) e.dateStart = 'Waktu berangkat wajib diisi'
-    if (!form.dateEnd) e.dateEnd = 'Waktu kembali wajib diisi'
+    if (!form.dateStart)          e.dateStart   = 'Waktu berangkat wajib diisi'
+    if (!form.dateEnd)            e.dateEnd     = 'Waktu kembali wajib diisi'
     if (form.dateStart && form.dateEnd && form.dateEnd <= form.dateStart)
       e.dateEnd = 'Waktu kembali harus setelah waktu berangkat'
-    if (!form.purpose.trim()) e.purpose = 'Keperluan wajib diisi'
+    if (!form.purpose.trim())     e.purpose     = 'Keperluan wajib diisi'
     return e
   }
 
@@ -76,12 +97,13 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      {/* Form */}
+
+      {/* ── Form ── */}
       <div className="lg:col-span-3">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100">
             <h2 className="text-base font-semibold text-gray-900">Permohonan Peminjaman Kendaraan</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Lengkapi detail perjalanan dinas Anda</p>
+            <p className="text-sm text-gray-500 mt-0.5">Lengkapi formulir sesuai kebutuhan perjalanan dinas</p>
           </div>
 
           {submitted && (
@@ -94,62 +116,73 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
           )}
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Field label="Nama Lengkap" error={errors.name}>
-                <input
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="cth. Budi Santoso"
-                  className={inputClass(errors.name)}
-                />
-              </Field>
 
+            {/* Nama Peminjam + Unit Kerja */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="Nama Peminjam" error={errors.name}>
+                <input name="name" value={form.name} onChange={handleChange}
+                  placeholder="cth. Budi Santoso" className={inputClass(errors.name)} />
+              </Field>
               <Field label="Unit Kerja" error={errors.division}>
-                <select
-                  name="division"
-                  value={form.division}
-                  onChange={handleChange}
-                  className={inputClass(errors.division)}
-                >
+                <select name="division" value={form.division} onChange={handleChange}
+                  className={inputClass(errors.division)}>
                   <option value="">Pilih unit kerja</option>
                   {UNIT_KERJA.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </Field>
             </div>
 
-            <Field label="Tujuan Perjalanan" error={errors.destination}>
-              <input
-                name="destination"
-                value={form.destination}
-                onChange={handleChange}
-                placeholder="cth. Kementerian Keuangan RI, Jakarta Pusat"
-                className={inputClass(errors.destination)}
-              />
+            {/* Nama Pengemudi */}
+            <Field label="Nama Pengemudi" error={errors.driverName}>
+              <input name="driverName" value={form.driverName} onChange={handleChange}
+                placeholder="cth. Agus Supriadi (boleh sama dengan peminjam)"
+                className={inputClass(errors.driverName)} />
             </Field>
 
+            {/* Jenis Mobil + Nomor Polisi */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Field label="Waktu Berangkat" error={errors.dateStart}>
-                <input type="datetime-local" name="dateStart" value={form.dateStart} onChange={handleChange} className={inputClass(errors.dateStart)} />
+              <Field label="Jenis Mobil" error={errors.carType}>
+                <select name="carType" value={form.carType} onChange={handleChange}
+                  className={inputClass(errors.carType)}>
+                  <option value="">Pilih jenis mobil</option>
+                  {CAR_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </Field>
-              <Field label="Waktu Kembali" error={errors.dateEnd}>
-                <input type="datetime-local" name="dateEnd" value={form.dateEnd} onChange={handleChange} className={inputClass(errors.dateEnd)} />
+              <Field label="Nomor Polisi" error={errors.plateNumber}>
+                <input name="plateNumber" value={form.plateNumber} onChange={handleChange}
+                  placeholder="cth. B 1234 XYZ" className={inputClass(errors.plateNumber)} />
               </Field>
             </div>
 
+            {/* Tujuan */}
+            <Field label="Tujuan Perjalanan" error={errors.destination}>
+              <input name="destination" value={form.destination} onChange={handleChange}
+                placeholder="cth. Kementerian Keuangan RI, Jakarta Pusat"
+                className={inputClass(errors.destination)} />
+            </Field>
+
+            {/* Waktu */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="Waktu Berangkat" error={errors.dateStart}>
+                <input type="datetime-local" name="dateStart" value={form.dateStart}
+                  onChange={handleChange} className={inputClass(errors.dateStart)} />
+              </Field>
+              <Field label="Waktu Kembali" error={errors.dateEnd}>
+                <input type="datetime-local" name="dateEnd" value={form.dateEnd}
+                  onChange={handleChange} className={inputClass(errors.dateEnd)} />
+              </Field>
+            </div>
+
+            {/* Keperluan */}
             <Field label="Keperluan / Tujuan Dinas" error={errors.purpose}>
-              <textarea
-                name="purpose"
-                value={form.purpose}
-                onChange={handleChange}
-                rows={3}
-                placeholder="Jelaskan keperluan dan tujuan perjalanan dinas..."
-                className={`${inputClass(errors.purpose)} resize-none`}
-              />
+              <textarea name="purpose" value={form.purpose} onChange={handleChange}
+                rows={3} placeholder="Jelaskan keperluan dan tujuan perjalanan dinas..."
+                className={`${inputClass(errors.purpose)} resize-none`} />
             </Field>
 
             <div className="pt-1">
-              <button type="submit" className="w-full bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white font-medium py-2.5 px-4 rounded-xl transition-colors cursor-pointer">
+              <button type="submit"
+                className="w-full bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white font-medium py-2.5 px-4 rounded-xl transition-colors cursor-pointer">
                 Ajukan Permohonan
               </button>
             </div>
@@ -157,7 +190,7 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
         </div>
       </div>
 
-      {/* Riwayat */}
+      {/* ── Riwayat ── */}
       <div className="lg:col-span-2">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100">
@@ -176,7 +209,6 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
 
                 return (
                   <li key={b.id}>
-                    {/* Summary row */}
                     <button
                       onClick={() => toggleExpanded(b.id)}
                       className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors"
@@ -188,7 +220,7 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {needsAction && (
-                            <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" title="Perlu tindakan" />
+                            <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" />
                           )}
                           <StatusBadge status={b.status} />
                           <svg
@@ -207,40 +239,36 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
                       </div>
                     </button>
 
-                    {/* Expanded section */}
                     {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50 px-6 pb-5 pt-4 space-y-4">
-                        {/* Trip detail */}
-                        <div className="text-xs text-gray-500 space-y-1">
+                      <div className="border-t border-gray-100 bg-gray-50 px-4 pb-5 pt-4 space-y-3">
+
+                        {/* Info ringkas booking */}
+                        <div className="rounded-xl bg-white border border-gray-200 px-3 py-2.5 text-xs text-gray-500 space-y-1">
+                          <p><span className="font-medium text-gray-600">Kendaraan:</span> {b.carType} · {b.plateNumber}</p>
+                          <p><span className="font-medium text-gray-600">Pengemudi:</span> {b.driverName}</p>
                           <p><span className="font-medium text-gray-600">Keperluan:</span> {b.purpose}</p>
                         </div>
 
                         {b.status === 'Menunggu Serah Terima' && (
-                          <PhotoUploadSection
-                            title="Foto Kondisi Kendaraan Sebelum Digunakan"
-                            description="Unggah 4 foto kendaraan dari berbagai sisi sebelum perjalanan dimulai"
-                            confirmLabel="Konfirmasi Serah Terima & Mulai Perjalanan"
-                            existingPhotos={bookingPhotos.pre}
-                            onConfirm={photos => onUploadPrePhoto(b.id, photos)}
+                          <DepartureSection
+                            onConfirm={data => onUploadPrePhoto(b.id, data)}
                           />
                         )}
 
                         {b.status === 'Sedang Digunakan' && (
-                          <div className="space-y-4">
-                            <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
-                            <PhotoUploadSection
-                              title="Foto Kondisi Kendaraan Setelah Digunakan"
-                              description="Unggah 4 foto kendaraan dari berbagai sisi setelah perjalanan selesai"
-                              confirmLabel="Tandai Perjalanan Selesai"
-                              existingPhotos={bookingPhotos.post}
-                              onConfirm={photos => onUploadPostPhoto(b.id, photos)}
-                            />
-                          </div>
+                          <ReturnSection
+                            booking={b}
+                            onConfirm={data => onUploadPostPhoto(b.id, data)}
+                          />
                         )}
 
                         {b.status === 'Selesai' && (
                           <div className="space-y-3">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dokumentasi Kendaraan</p>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Ringkasan Perjalanan</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <TripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                              <TripDataCard label="Pengembalian"  km={b.kmReturn} fuel={b.fuelReturn} emoney={b.eMoneyEnd} />
+                            </div>
                             <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
                             <PhotoDisplay label="Foto Setelah Digunakan" src={bookingPhotos.post} />
                           </div>
@@ -258,106 +286,246 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
   )
 }
 
-function PhotoUploadSection({ title, description, confirmLabel, existingPhotos, onConfirm }) {
-  const SLOT_COUNT = 4
-  const [previews, setPreviews] = useState(() =>
-    Array.isArray(existingPhotos) ? [...existingPhotos] : Array(SLOT_COUNT).fill(null)
-  )
-  const [confirmed, setConfirmed] = useState(false)
+/* ─── Custom hook: photo slots ───────────────────────────────── */
 
-  const inputRef0 = useRef(null)
-  const inputRef1 = useRef(null)
-  const inputRef2 = useRef(null)
-  const inputRef3 = useRef(null)
-  const inputRefs = [inputRef0, inputRef1, inputRef2, inputRef3]
-
-  const filledCount = previews.filter(Boolean).length
-  const allFilled = filledCount === SLOT_COUNT
+function usePhotoSlots() {
+  const [previews, setPreviews] = useState([null, null, null, null])
+  const r0 = useRef(null); const r1 = useRef(null)
+  const r2 = useRef(null); const r3 = useRef(null)
+  const refs = [r0, r1, r2, r3]
 
   function handleFile(index, e) {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = evt => {
-      setPreviews(prev => {
-        const next = [...prev]
-        next[index] = evt.target.result
-        return next
-      })
-    }
+    reader.onload = evt => setPreviews(prev => {
+      const next = [...prev]; next[index] = evt.target.result; return next
+    })
     reader.readAsDataURL(file)
   }
 
   function handleRemove(index) {
-    setPreviews(prev => {
-      const next = [...prev]
-      next[index] = null
-      return next
-    })
-    if (inputRefs[index].current) inputRefs[index].current.value = ''
+    setPreviews(prev => { const next = [...prev]; next[index] = null; return next })
+    if (refs[index].current) refs[index].current.value = ''
   }
+
+  return { previews, refs, handleFile, handleRemove }
+}
+
+/* ─── Photo slot grid (shared) ───────────────────────────────── */
+
+function PhotoSlotGrid({ previews, refs, confirmed, onFile, onRemove }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {previews.map((preview, i) => (
+        <div key={i}>
+          {preview ? (
+            <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+              <img src={preview} alt={`Foto ${i + 1}`} className="w-full h-28 object-cover" />
+              {!confirmed && (
+                <button onClick={() => onRemove(i)}
+                  className="absolute top-1 right-1 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow text-gray-500 hover:text-red-500 transition-colors cursor-pointer">
+                  <XIcon className="w-3 h-3" />
+                </button>
+              )}
+              <span className="absolute bottom-1 left-1 text-[10px] font-medium bg-black/40 text-white px-1.5 py-0.5 rounded">
+                Foto {i + 1}
+              </span>
+            </div>
+          ) : (
+            <button type="button" onClick={() => refs[i].current?.click()}
+              className="w-full h-28 rounded-lg border-2 border-dashed border-gray-200 hover:border-brand-400 hover:bg-brand-50 active:bg-brand-100 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:text-brand-500 transition-colors cursor-pointer">
+              <CameraIcon className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Foto {i + 1}</span>
+            </button>
+          )}
+          <input ref={refs[i]} type="file" accept="image/*" className="hidden" onChange={e => onFile(i, e)} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ─── Departure section ──────────────────────────────────────── */
+
+function DepartureSection({ onConfirm }) {
+  const { previews, refs, handleFile, handleRemove } = usePhotoSlots()
+  const [km,     setKm]     = useState('')
+  const [fuel,   setFuel]   = useState('')
+  const [emoney, setEmoney] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
+
+  const filledPhotos    = previews.filter(Boolean).length
+  const allPhotosFilled = filledPhotos === 4
+  const allFieldsFilled = km.trim() !== '' && fuel !== '' && emoney.trim() !== ''
+  const canConfirm      = allPhotosFilled && allFieldsFilled
 
   function handleConfirm() {
-    if (!allFilled) return
+    if (!canConfirm) return
     setConfirmed(true)
-    onConfirm(previews)
+    onConfirm({ photos: previews, km, fuel, emoney })
   }
 
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3">
-      <p className="text-xs font-semibold text-gray-800 mb-0.5">{title}</p>
-      <p className="text-xs text-gray-400 mb-3">{description}</p>
+  const btnLabel = !allPhotosFilled
+    ? `Unggah ${4 - filledPhotos} foto lagi`
+    : !allFieldsFilled
+    ? 'Lengkapi data keberangkatan'
+    : 'Konfirmasi Serah Terima & Mulai Perjalanan'
 
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        {previews.map((preview, i) => (
-          <div key={i}>
-            {preview ? (
-              <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                <img src={preview} alt={`Foto ${i + 1}`} className="w-full h-28 object-cover" />
-                {!confirmed && (
-                  <button
-                    onClick={() => handleRemove(i)}
-                    className="absolute top-1 right-1 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow text-gray-500 hover:text-red-500 transition-colors cursor-pointer"
-                  >
-                    <XIcon className="w-3 h-3" />
-                  </button>
-                )}
-                <span className="absolute bottom-1 left-1 text-[10px] font-medium bg-black/40 text-white px-1.5 py-0.5 rounded">
-                  Foto {i + 1}
-                </span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => inputRefs[i].current?.click()}
-                className="w-full h-28 rounded-lg border-2 border-dashed border-gray-200 hover:border-brand-400 hover:bg-brand-50 active:bg-brand-100 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:text-brand-500 transition-colors cursor-pointer"
-              >
-                <CameraIcon className="w-6 h-6" />
-                <span className="text-[10px] font-semibold text-gray-400">Foto {i + 1}</span>
-              </button>
-            )}
-            <input ref={inputRefs[i]} type="file" accept="image/*" className="hidden" onChange={e => handleFile(i, e)} />
+  return (
+    <div className="space-y-3">
+      {/* Operational fields */}
+      <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
+        <p className="text-xs font-semibold text-gray-800">Data Keberangkatan</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Kilometer</label>
+            <input type="number" value={km} onChange={e => setKm(e.target.value)}
+              placeholder="cth. 12345" disabled={confirmed} className={smallInput} />
           </div>
-        ))}
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Indikator BBM</label>
+            <select value={fuel} onChange={e => setFuel(e.target.value)} disabled={confirmed} className={smallSelect}>
+              <option value="">Pilih</option>
+              {FUEL_LEVELS.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">E-Money Saldo Awal</label>
+          <input type="text" value={emoney} onChange={e => setEmoney(e.target.value)}
+            placeholder="cth. Rp 150.000" disabled={confirmed} className={smallInput} />
+        </div>
+      </div>
+
+      {/* Photos */}
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <p className="text-xs font-semibold text-gray-800 mb-0.5">Foto Kondisi Sebelum Digunakan</p>
+        <p className="text-xs text-gray-400 mb-3">Unggah 4 foto kendaraan dari berbagai sisi</p>
+        <PhotoSlotGrid previews={previews} refs={refs} confirmed={confirmed} onFile={handleFile} onRemove={handleRemove} />
       </div>
 
       {!confirmed && (
-        <button
-          onClick={handleConfirm}
-          disabled={!allFilled}
+        <button onClick={handleConfirm} disabled={!canConfirm}
           className={`w-full flex items-center justify-center gap-2 text-xs font-medium py-2.5 rounded-lg transition-colors ${
-            allFilled
+            canConfirm
               ? 'bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white cursor-pointer'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
-        >
+          }`}>
           <CheckIcon className="w-3.5 h-3.5" />
-          {allFilled ? confirmLabel : `Unggah ${SLOT_COUNT - filledCount} foto lagi`}
+          {btnLabel}
         </button>
       )}
     </div>
   )
 }
+
+/* ─── Return section ─────────────────────────────────────────── */
+
+function ReturnSection({ booking, onConfirm }) {
+  const { previews, refs, handleFile, handleRemove } = usePhotoSlots()
+  const [km,     setKm]     = useState('')
+  const [fuel,   setFuel]   = useState('')
+  const [emoney, setEmoney] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
+
+  const filledPhotos    = previews.filter(Boolean).length
+  const allPhotosFilled = filledPhotos === 4
+  const allFieldsFilled = km.trim() !== '' && fuel !== '' && emoney.trim() !== ''
+  const canConfirm      = allPhotosFilled && allFieldsFilled
+
+  function handleConfirm() {
+    if (!canConfirm) return
+    setConfirmed(true)
+    onConfirm({ photos: previews, km, fuel, emoney })
+  }
+
+  const btnLabel = !allPhotosFilled
+    ? `Unggah ${4 - filledPhotos} foto lagi`
+    : !allFieldsFilled
+    ? 'Lengkapi data pengembalian'
+    : 'Tandai Perjalanan Selesai'
+
+  return (
+    <div className="space-y-3">
+      {/* Pre-trip summary */}
+      <TripDataCard label="Data Keberangkatan"
+        km={booking.kmDepart} fuel={booking.fuelDepart} emoney={booking.eMoneyStart} />
+
+      {/* Pre-trip photos */}
+      <PhotoDisplay label="Foto Sebelum Digunakan" src={booking.photos?.pre} />
+
+      {/* Return fields */}
+      <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
+        <p className="text-xs font-semibold text-gray-800">Data Pengembalian</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Kilometer</label>
+            <input type="number" value={km} onChange={e => setKm(e.target.value)}
+              placeholder="cth. 12500" disabled={confirmed} className={smallInput} />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Indikator BBM</label>
+            <select value={fuel} onChange={e => setFuel(e.target.value)} disabled={confirmed} className={smallSelect}>
+              <option value="">Pilih</option>
+              {FUEL_LEVELS.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">E-Money Saldo Akhir</label>
+          <input type="text" value={emoney} onChange={e => setEmoney(e.target.value)}
+            placeholder="cth. Rp 50.000" disabled={confirmed} className={smallInput} />
+        </div>
+      </div>
+
+      {/* Return photos */}
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <p className="text-xs font-semibold text-gray-800 mb-0.5">Foto Kondisi Setelah Digunakan</p>
+        <p className="text-xs text-gray-400 mb-3">Unggah 4 foto kendaraan dari berbagai sisi</p>
+        <PhotoSlotGrid previews={previews} refs={refs} confirmed={confirmed} onFile={handleFile} onRemove={handleRemove} />
+      </div>
+
+      {!confirmed && (
+        <button onClick={handleConfirm} disabled={!canConfirm}
+          className={`w-full flex items-center justify-center gap-2 text-xs font-medium py-2.5 rounded-lg transition-colors ${
+            canConfirm
+              ? 'bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white cursor-pointer'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}>
+          <CheckIcon className="w-3.5 h-3.5" />
+          {btnLabel}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/* ─── Trip data card ─────────────────────────────────────────── */
+
+function TripDataCard({ label, km, fuel, emoney }) {
+  return (
+    <div className="rounded-xl bg-white border border-gray-200 p-3">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{label}</p>
+      <div className="grid grid-cols-3 gap-1 text-xs">
+        <div>
+          <p className="text-gray-400">Kilometer</p>
+          <p className="font-semibold text-gray-700">{km ?? '-'}</p>
+        </div>
+        <div>
+          <p className="text-gray-400">BBM</p>
+          <p className="font-semibold text-gray-700">{fuel ?? '-'}</p>
+        </div>
+        <div>
+          <p className="text-gray-400">E-Money</p>
+          <p className="font-semibold text-gray-700 truncate">{emoney ?? '-'}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Photo display (completed) ──────────────────────────────── */
 
 function PhotoDisplay({ label, src }) {
   const photos = Array.isArray(src) ? src.filter(Boolean) : []
@@ -386,6 +554,8 @@ function PhotoDisplay({ label, src }) {
     </div>
   )
 }
+
+/* ─── Form primitives ────────────────────────────────────────── */
 
 function Field({ label, error, children }) {
   return (

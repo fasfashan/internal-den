@@ -283,8 +283,10 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak }) {
           <section>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Informasi Permohonan</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              <Detail label="Nama Lengkap"            value={b.name} />
+              <Detail label="Nama Peminjam"            value={b.name} />
               <Detail label="Unit Kerja"               value={b.division} />
+              <Detail label="Nama Pengemudi"           value={b.driverName ?? '-'} />
+              <Detail label="Jenis Mobil"              value={b.carType ? `${b.carType} · ${b.plateNumber}` : '-'} />
               <Detail label="Tujuan Perjalanan"        value={b.destination} span />
               <Detail label="Keperluan / Tujuan Dinas" value={b.purpose}     span />
               <Detail
@@ -308,12 +310,13 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak }) {
           {b.status === 'Sedang Digunakan' && (
             <section className="space-y-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dokumentasi Kendaraan</p>
-              <div className="space-y-3">
-                <PhotoDisplay label="Foto Sebelum Digunakan (4 foto)" src={photos.pre} />
-                <div className="rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 py-8 text-gray-300">
-                  <CameraIcon className="w-7 h-7" />
-                  <span className="text-xs text-center px-2">Menunggu foto setelah kembali dari karyawan</span>
-                </div>
+              <AdminTripDataRow
+                leftLabel="Keberangkatan" leftKm={b.kmDepart} leftFuel={b.fuelDepart} leftEmoney={b.eMoneyStart}
+              />
+              <PhotoDisplay label="Foto Sebelum Digunakan" src={photos.pre} />
+              <div className="rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 py-8 text-gray-300">
+                <CameraIcon className="w-7 h-7" />
+                <span className="text-xs text-center px-2">Menunggu foto setelah kembali dari karyawan</span>
               </div>
             </section>
           )}
@@ -321,10 +324,12 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak }) {
           {b.status === 'Selesai' && (
             <section className="space-y-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dokumentasi Kendaraan</p>
-              <div className="space-y-3">
-                <PhotoDisplay label="Foto Sebelum Digunakan (4 foto)" src={photos.pre} />
-                <PhotoDisplay label="Foto Setelah Digunakan (4 foto)" src={photos.post} />
+              <div className="grid grid-cols-2 gap-3">
+                <AdminTripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                <AdminTripDataCard label="Pengembalian"  km={b.kmReturn} fuel={b.fuelReturn} emoney={b.eMoneyEnd} />
               </div>
+              <PhotoDisplay label="Foto Sebelum Digunakan" src={photos.pre} />
+              <PhotoDisplay label="Foto Setelah Digunakan" src={photos.post} />
             </section>
           )}
 
@@ -485,6 +490,34 @@ function PhotoDisplay({ label, src }) {
         </div>
       )}
     </>
+  )
+}
+
+function AdminTripDataCard({ label, km, fuel, emoney }) {
+  return (
+    <div className="rounded-xl bg-gray-50 border border-gray-200 p-3">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{label}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Kilometer</span>
+          <span className="font-medium text-gray-700">{km ?? '-'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Indikator BBM</span>
+          <span className="font-medium text-gray-700">{fuel ?? '-'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">E-Money</span>
+          <span className="font-medium text-gray-700">{emoney ?? '-'}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AdminTripDataRow({ leftLabel, leftKm, leftFuel, leftEmoney }) {
+  return (
+    <AdminTripDataCard label={leftLabel} km={leftKm} fuel={leftFuel} emoney={leftEmoney} />
   )
 }
 

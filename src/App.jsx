@@ -54,18 +54,18 @@ export default function App() {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b))
   }
 
-  function uploadPrePhoto(id, dataUrl) {
+  function uploadPrePhoto(id, { photos, km, fuel, emoney }) {
     setBookings(prev => prev.map(b =>
       b.id === id
-        ? { ...b, status: 'Sedang Digunakan', photos: { ...b.photos, pre: dataUrl } }
+        ? { ...b, status: 'Sedang Digunakan', photos: { ...b.photos, pre: photos }, kmDepart: km, fuelDepart: fuel, eMoneyStart: emoney }
         : b
     ))
   }
 
-  function uploadPostPhoto(id, dataUrl) {
+  function uploadPostPhoto(id, { photos, km, fuel, emoney }) {
     setBookings(prev => prev.map(b =>
       b.id === id
-        ? { ...b, status: 'Selesai', photos: { ...b.photos, post: dataUrl } }
+        ? { ...b, status: 'Selesai', photos: { ...b.photos, post: photos }, kmReturn: km, fuelReturn: fuel, eMoneyEnd: emoney }
         : b
     ))
   }
