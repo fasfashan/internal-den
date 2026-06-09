@@ -6,6 +6,15 @@ import EmployeeView from './components/EmployeeView'
 import AdminView from './components/AdminView'
 import Sidebar, { BottomNav } from './components/Sidebar'
 import { LogOutIcon } from './components/Icons'
+import DashboardView from './views/DashboardView'
+import KegiatanView from './views/KegiatanView'
+import MasterKegiatanView from './views/MasterKegiatanView'
+import DokumentasiView from './views/DokumentasiView'
+import LpdView from './views/LpdView'
+import PersidanganView from './views/PersidanganView'
+import PenggunaView from './views/PenggunaView'
+import PengaturanView from './views/PengaturanView'
+import LogApiView from './views/LogApiView'
 
 const MOCK_USERS = {
   employee: { role: 'employee', name: 'Budi Santoso', email: 'budi.santoso@den.go.id' },
@@ -24,7 +33,7 @@ function readLS(key, fallback) {
 export default function App() {
   const [employeeUser, setEmployeeUser] = useState(() => readLS('den_employee_user', null))
   const [adminUser,    setAdminUser]    = useState(() => readLS('den_admin_user', null))
-  const [module,       setModule]       = useState(() => readLS('den_module', 'peminjaman'))
+  const [module,       setModule]       = useState(() => readLS('den_module', 'dashboard'))
   const [bookings,     setBookings]     = useState(() => readLS('den_bookings', []))
 
   useEffect(() => {
@@ -91,7 +100,12 @@ export default function App() {
         adminUser
           ? (
             <AppShell user={adminUser} module={module} onNavigate={setModule} onSignOut={() => setAdminUser(null)}>
-              <AdminView bookings={bookings} onUpdateStatus={updateStatus} />
+              <AdminModuleView
+                module={module}
+                bookings={bookings}
+                onUpdateStatus={updateStatus}
+                adminUser={adminUser}
+              />
             </AppShell>
           )
           : <AdminLoginPage onLogin={() => setAdminUser(MOCK_USERS.admin)} />
@@ -102,15 +116,30 @@ export default function App() {
   )
 }
 
+function AdminModuleView({ module, bookings, onUpdateStatus, adminUser }) {
+  switch (module) {
+    case 'dashboard':       return <DashboardView adminName={adminUser.name} />
+    case 'kegiatan':        return <KegiatanView />
+    case 'master-kegiatan': return <MasterKegiatanView />
+    case 'dokumentasi':     return <DokumentasiView />
+    case 'lpd':             return <LpdView />
+    case 'persidangan':     return <PersidanganView />
+    case 'pengguna':        return <PenggunaView />
+    case 'pengaturan':      return <PengaturanView />
+    case 'log-api':         return <LogApiView />
+    default:                return <AdminView bookings={bookings} onUpdateStatus={onUpdateStatus} />
+  }
+}
+
 function AppShell({ user, module, onNavigate, onSignOut, children }) {
   const isAdmin = user.role === 'admin'
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20 flex-shrink-0">
+      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20 shrink-0">
         <div className="flex items-center justify-between h-14 px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="DEN" className="h-8 w-auto object-contain flex-shrink-0" />
+            <img src="/logo.png" alt="DEN" className="h-8 w-auto object-contain shrink-0" />
             <div className="text-left">
               <p className="text-sm font-semibold text-gray-900 leading-tight">Dewan Ekonomi Nasional</p>
               <p className="text-xs text-gray-400 leading-tight">
@@ -129,7 +158,7 @@ function AppShell({ user, module, onNavigate, onSignOut, children }) {
               <span className="text-sm font-medium text-gray-800 leading-tight">{user.name}</span>
               <span className="text-xs text-gray-400 leading-tight">{user.email}</span>
             </div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
               isAdmin ? 'bg-slate-700 text-white' : 'bg-brand-100 text-brand-600'
             }`}>
               <span className="text-sm font-semibold">{user.name.charAt(0)}</span>
@@ -147,12 +176,12 @@ function AppShell({ user, module, onNavigate, onSignOut, children }) {
       </header>
 
       <div className="flex flex-1 min-h-0">
-        <Sidebar activeModule={module} onNavigate={onNavigate} onSignOut={onSignOut} />
+        <Sidebar activeModule={module} onNavigate={onNavigate} onSignOut={onSignOut} isAdmin={isAdmin} />
         <main className="flex-1 overflow-auto px-4 sm:px-6 py-5 sm:py-8 pb-24 lg:pb-8">
           {children}
         </main>
       </div>
-      <BottomNav activeModule={module} onNavigate={onNavigate} onSignOut={onSignOut} />
+      <BottomNav activeModule={module} onNavigate={onNavigate} onSignOut={onSignOut} isAdmin={isAdmin} />
     </div>
   )
 }

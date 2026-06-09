@@ -19,6 +19,34 @@ const STATUS_CONFIG = {
     ring: 'bg-red-50 text-red-600 ring-red-200',
     dot:  'bg-red-500',
   },
+  'Plan': {
+    ring: 'bg-blue-50 text-blue-700 ring-blue-200',
+    dot:  'bg-blue-500',
+  },
+  'Done': {
+    ring: 'bg-green-50 text-green-700 ring-green-200',
+    dot:  'bg-green-500',
+  },
+  'Evaluasi': {
+    ring: 'bg-brand-50 text-brand-700 ring-brand-200',
+    dot:  'bg-brand-400',
+  },
+  'admin': {
+    ring: 'bg-slate-50 text-slate-700 ring-slate-200',
+    dot:  'bg-slate-500',
+  },
+  'user': {
+    ring: 'bg-gray-50 text-gray-600 ring-gray-200',
+    dot:  'bg-gray-400',
+  },
+  'SUCCESS': {
+    ring: 'bg-green-50 text-green-700 ring-green-200',
+    dot:  'bg-green-500',
+  },
+  'FAILED': {
+    ring: 'bg-red-50 text-red-600 ring-red-200',
+    dot:  'bg-red-500',
+  },
 }
 
 export default function StatusBadge({ status }) {
