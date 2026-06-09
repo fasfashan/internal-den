@@ -3,15 +3,13 @@ import StatusBadge from './StatusBadge'
 import { ClockIcon, MapPinIcon, CameraIcon, CheckIcon, XIcon, ImageIcon } from './Icons'
 
 const UNIT_KERJA = [
-  'Sekretariat Jenderal',
-  'Bidang Kajian Ekonomi Makro',
-  'Bidang Kebijakan Fiskal',
-  'Bidang Perdagangan dan Investasi',
-  'Bidang Ketahanan Pangan',
-  'Bidang Infrastruktur dan Energi',
-  'Bidang Sumber Daya Manusia',
-  'Bidang Hukum dan Tata Kelola',
-  'Inspektorat',
+   'Sekretariat Eksekutif Dewan Ekonomi Nasional',
+  'Direktorat Eksekutif Bidang Strategi dan Kebijakan Ekonomi',
+  'Direktorat Eksekutif Bidang Percepatan Program Prioritas Ekonomi',
+  'Direktorat Eksekutif Bidang Sinkronisasi Kebijakan Program Prioritas Ekonomi',
+  'Direktorat Eksekutif Bidang Pemantauan dan Evaluasi Program Prioritas Ekonomi',
+ 
+  'Sekretariat Dewan Ekonomi Nasional',
 ]
 
 const CAR_TYPES = ['Zenix', 'Veloz', 'Xpander']
