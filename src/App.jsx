@@ -47,7 +47,9 @@ export default function App() {
   }, [adminUser])
 
   useEffect(() => { localStorage.setItem('den_module', JSON.stringify(module)) }, [module])
-  useEffect(() => { localStorage.setItem('den_bookings', JSON.stringify(bookings)) }, [bookings])
+  useEffect(() => {
+    try { localStorage.setItem('den_bookings', JSON.stringify(bookings)) } catch { /* quota — photos too large */ }
+  }, [bookings])
 
   function addBooking(booking) {
     setBookings(prev => [{

@@ -286,6 +286,27 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
   )
 }
 
+/* ─── Image compression ──────────────────────────────────────── */
+
+function compressImage(file) {
+  return new Promise(resolve => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const MAX = 800
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas')
+      canvas.width  = Math.round(img.width  * scale)
+      canvas.height = Math.round(img.height * scale)
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/jpeg', 0.60))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+    img.src = url
+  })
+}
+
 /* ─── Custom hook: photo slots ───────────────────────────────── */
 
 function usePhotoSlots() {
@@ -294,14 +315,12 @@ function usePhotoSlots() {
   const r2 = useRef(null); const r3 = useRef(null)
   const refs = [r0, r1, r2, r3]
 
-  function handleFile(index, e) {
+  async function handleFile(index, e) {
     const file = e.target.files[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = evt => setPreviews(prev => {
-      const next = [...prev]; next[index] = evt.target.result; return next
-    })
-    reader.readAsDataURL(file)
+    const compressed = await compressImage(file)
+    if (!compressed) return
+    setPreviews(prev => { const next = [...prev]; next[index] = compressed; return next })
   }
 
   function handleRemove(index) {
