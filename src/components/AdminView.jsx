@@ -5,7 +5,9 @@ import { CheckIcon, XIcon, ClockIcon, CameraIcon, ImageIcon } from './Icons'
 const ALL_STATUSES = [
   'Menunggu Konfirmasi',
   'Menunggu Serah Terima',
+  'Menunggu Verifikasi Keberangkatan',
   'Sedang Digunakan',
+  'Menunggu Verifikasi Pengembalian',
   'Selesai',
   'Ditolak',
 ]
@@ -27,7 +29,7 @@ function formatDateTime(dt) {
   })
 }
 
-export default function AdminView({ bookings, onUpdateStatus }) {
+export default function AdminView({ bookings, onUpdateStatus, onVerifyDeparture, onVerifyReturn }) {
   // filter is the single source of truth for status — shared by tabs AND dropdown
   const [filter,     setFilter]     = useState('Semua')
   const [search,     setSearch]     = useState('')
@@ -48,7 +50,7 @@ export default function AdminView({ bookings, onUpdateStatus }) {
   })
 
   const pendingCount = bookings.filter(b => b.status === 'Menunggu Konfirmasi').length
-  const aktifCount   = bookings.filter(b => b.status === 'Menunggu Serah Terima' || b.status === 'Sedang Digunakan').length
+  const aktifCount   = bookings.filter(b => ['Menunggu Serah Terima', 'Menunggu Verifikasi Keberangkatan', 'Sedang Digunakan', 'Menunggu Verifikasi Pengembalian'].includes(b.status)).length
   const selesaiCount = bookings.filter(b => b.status === 'Selesai').length
 
   function handleSetujui(id) {
@@ -212,6 +214,8 @@ export default function AdminView({ bookings, onUpdateStatus }) {
           onClose={() => setSelectedId(null)}
           onSetujui={() => handleSetujui(selectedBooking.id)}
           onTolak={() => handleTolak(selectedBooking.id)}
+          onVerifyDeparture={() => { onVerifyDeparture(selectedBooking.id); setSelectedId(null) }}
+          onVerifyReturn={() => { onVerifyReturn(selectedBooking.id); setSelectedId(null) }}
         />
       )}
     </div>
@@ -249,7 +253,7 @@ function StatCard({ label, count, color, bg }) {
 
 /* ─── Detail modal ─────────────────────────────────────────── */
 
-function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak }) {
+function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak, onVerifyDeparture, onVerifyReturn }) {
   const photos = b.photos ?? {}
 
   return (
@@ -303,21 +307,45 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak }) {
           {/* Status-specific content */}
           {b.status === 'Menunggu Serah Terima' && (
             <StatusNote icon={<CameraIcon className="w-4 h-4" />} color="blue">
-              Menunggu karyawan mengunggah foto kondisi kendaraan sebelum digunakan.
+              Menunggu karyawan mengisi data dan foto kondisi kendaraan sebelum berangkat.
             </StatusNote>
+          )}
+
+          {b.status === 'Menunggu Verifikasi Keberangkatan' && (
+            <section className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Verifikasi Keberangkatan</p>
+              <StatusNote icon={<CameraIcon className="w-4 h-4" />} color="orange">
+                Karyawan sudah mengisi data dan mengunggah foto. Periksa kondisi kendaraan, lalu konfirmasi keberangkatan.
+              </StatusNote>
+              <AdminTripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+              <PhotoDisplay label="Foto Sebelum Digunakan" src={photos.pre} />
+            </section>
           )}
 
           {b.status === 'Sedang Digunakan' && (
             <section className="space-y-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dokumentasi Kendaraan</p>
-              <AdminTripDataRow
-                leftLabel="Keberangkatan" leftKm={b.kmDepart} leftFuel={b.fuelDepart} leftEmoney={b.eMoneyStart}
-              />
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Kendaraan Sedang Digunakan</p>
+              <AdminTripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
               <PhotoDisplay label="Foto Sebelum Digunakan" src={photos.pre} />
               <div className="rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 py-8 text-gray-300">
                 <CameraIcon className="w-7 h-7" />
-                <span className="text-xs text-center px-2">Menunggu foto setelah kembali dari karyawan</span>
+                <span className="text-xs text-center px-2">Menunggu foto pengembalian dari karyawan</span>
               </div>
+            </section>
+          )}
+
+          {b.status === 'Menunggu Verifikasi Pengembalian' && (
+            <section className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Verifikasi Pengembalian</p>
+              <StatusNote icon={<CameraIcon className="w-4 h-4" />} color="violet">
+                Karyawan sudah mengisi data pengembalian dan mengunggah foto. Periksa kondisi kendaraan, lalu konfirmasi pengembalian.
+              </StatusNote>
+              <div className="grid grid-cols-2 gap-3">
+                <AdminTripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                <AdminTripDataCard label="Pengembalian"  km={b.kmReturn} fuel={b.fuelReturn} emoney={b.eMoneyEnd} />
+              </div>
+              <PhotoDisplay label="Foto Sebelum Digunakan" src={photos.pre} />
+              <PhotoDisplay label="Foto Setelah Digunakan" src={photos.post} />
             </section>
           )}
 
@@ -361,12 +389,38 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak }) {
           </div>
         )}
 
-        {b.status !== 'Menunggu Konfirmasi' && (
+        {b.status === 'Menunggu Verifikasi Keberangkatan' && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 flex-shrink-0">
+            <button onClick={onClose}
+              className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
+              Tutup
+            </button>
+            <button onClick={onVerifyDeparture}
+              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
+              <CheckIcon className="w-4 h-4" />
+              Konfirmasi Keberangkatan
+            </button>
+          </div>
+        )}
+
+        {b.status === 'Menunggu Verifikasi Pengembalian' && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 flex-shrink-0">
+            <button onClick={onClose}
+              className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
+              Tutup
+            </button>
+            <button onClick={onVerifyReturn}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
+              <CheckIcon className="w-4 h-4" />
+              Konfirmasi Pengembalian
+            </button>
+          </div>
+        )}
+
+        {!['Menunggu Konfirmasi', 'Menunggu Verifikasi Keberangkatan', 'Menunggu Verifikasi Pengembalian'].includes(b.status) && (
           <div className="px-6 py-4 border-t border-gray-100 flex justify-end flex-shrink-0">
-            <button
-              onClick={onClose}
-              className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
-            >
+            <button onClick={onClose}
+              className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
               Tutup
             </button>
           </div>
@@ -524,7 +578,8 @@ function AdminTripDataRow({ leftLabel, leftKm, leftFuel, leftEmoney }) {
 function StatusNote({ icon, color, children }) {
   const styles = {
     blue:   'bg-blue-50 border-blue-200 text-blue-700',
-    violet: 'bg-violet-50 border-violet-200 text-violet-700',
+    orange: 'bg-orange-50 border-orange-200 text-orange-700',
+    violet: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700',
   }
   return (
     <div className={`flex items-start gap-2.5 border rounded-xl px-4 py-3 text-sm ${styles[color]}`}>

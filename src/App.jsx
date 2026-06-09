@@ -68,7 +68,7 @@ export default function App() {
   function uploadPrePhoto(id, { photos, km, fuel, emoney }) {
     setBookings(prev => prev.map(b =>
       b.id === id
-        ? { ...b, status: 'Sedang Digunakan', photos: { ...b.photos, pre: photos }, kmDepart: km, fuelDepart: fuel, eMoneyStart: emoney }
+        ? { ...b, status: 'Menunggu Verifikasi Keberangkatan', photos: { ...b.photos, pre: photos }, kmDepart: km, fuelDepart: fuel, eMoneyStart: emoney }
         : b
     ))
   }
@@ -76,9 +76,17 @@ export default function App() {
   function uploadPostPhoto(id, { photos, km, fuel, emoney }) {
     setBookings(prev => prev.map(b =>
       b.id === id
-        ? { ...b, status: 'Selesai', photos: { ...b.photos, post: photos }, kmReturn: km, fuelReturn: fuel, eMoneyEnd: emoney }
+        ? { ...b, status: 'Menunggu Verifikasi Pengembalian', photos: { ...b.photos, post: photos }, kmReturn: km, fuelReturn: fuel, eMoneyEnd: emoney }
         : b
     ))
+  }
+
+  function verifyDeparture(id) {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Sedang Digunakan' } : b))
+  }
+
+  function verifyReturn(id) {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Selesai' } : b))
   }
 
   return (
@@ -106,6 +114,8 @@ export default function App() {
                 module={module}
                 bookings={bookings}
                 onUpdateStatus={updateStatus}
+                onVerifyDeparture={verifyDeparture}
+                onVerifyReturn={verifyReturn}
                 adminUser={adminUser}
               />
             </AppShell>
@@ -118,7 +128,7 @@ export default function App() {
   )
 }
 
-function AdminModuleView({ module, bookings, onUpdateStatus, adminUser }) {
+function AdminModuleView({ module, bookings, onUpdateStatus, onVerifyDeparture, onVerifyReturn, adminUser }) {
   switch (module) {
     case 'dashboard':       return <DashboardView adminName={adminUser.name} />
     case 'kegiatan':        return <KegiatanView />
@@ -129,7 +139,7 @@ function AdminModuleView({ module, bookings, onUpdateStatus, adminUser }) {
     case 'pengguna':        return <PenggunaView />
     case 'pengaturan':      return <PengaturanView />
     case 'log-api':         return <LogApiView />
-    default:                return <AdminView bookings={bookings} onUpdateStatus={onUpdateStatus} />
+    default:                return <AdminView bookings={bookings} onUpdateStatus={onUpdateStatus} onVerifyDeparture={onVerifyDeparture} onVerifyReturn={onVerifyReturn} />
   }
 }
 

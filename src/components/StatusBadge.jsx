@@ -7,9 +7,17 @@ const STATUS_CONFIG = {
     ring: 'bg-blue-50 text-blue-700 ring-blue-200',
     dot:  'bg-blue-500',
   },
+  'Menunggu Verifikasi Keberangkatan': {
+    ring: 'bg-orange-50 text-orange-700 ring-orange-200',
+    dot:  'bg-orange-400',
+  },
   'Sedang Digunakan': {
     ring: 'bg-violet-50 text-violet-700 ring-violet-200',
     dot:  'bg-violet-500',
+  },
+  'Menunggu Verifikasi Pengembalian': {
+    ring: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200',
+    dot:  'bg-fuchsia-500',
   },
   'Selesai': {
     ring: 'bg-green-50 text-green-700 ring-green-200',

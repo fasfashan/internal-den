@@ -28,6 +28,7 @@ const EMPTY_FORM = {
 }
 
 const NEEDS_ACTION = ['Menunggu Serah Terima', 'Sedang Digunakan']
+const WAITING_ADMIN = ['Menunggu Verifikasi Keberangkatan', 'Menunggu Verifikasi Pengembalian']
 
 const smallInput = [
   'w-full px-2.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 outline-none',
@@ -202,7 +203,8 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
             <ul className="divide-y divide-gray-100">
               {bookings.map(b => {
                 const isExpanded = expanded === b.id
-                const needsAction = NEEDS_ACTION.includes(b.status)
+                const needsAction  = NEEDS_ACTION.includes(b.status)
+                const waitingAdmin = WAITING_ADMIN.includes(b.status)
                 const bookingPhotos = b.photos ?? {}
 
                 return (
@@ -219,6 +221,9 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {needsAction && (
                             <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" />
+                          )}
+                          {waitingAdmin && (
+                            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse flex-shrink-0" />
                           )}
                           <StatusBadge status={b.status} />
                           <svg
@@ -253,11 +258,37 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
                           />
                         )}
 
+                        {b.status === 'Menunggu Verifikasi Keberangkatan' && (
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-2.5 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5 text-xs text-orange-700">
+                              <ClockIcon className="w-4 h-4 shrink-0 mt-0.5" />
+                              <span>Data keberangkatan sudah terkirim. Menunggu verifikasi admin sebelum kendaraan berangkat.</span>
+                            </div>
+                            <TripDataCard label="Data Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                            <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
+                          </div>
+                        )}
+
                         {b.status === 'Sedang Digunakan' && (
                           <ReturnSection
                             booking={b}
                             onConfirm={data => onUploadPostPhoto(b.id, data)}
                           />
+                        )}
+
+                        {b.status === 'Menunggu Verifikasi Pengembalian' && (
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-2.5 bg-fuchsia-50 border border-fuchsia-200 rounded-xl px-3 py-2.5 text-xs text-fuchsia-700">
+                              <ClockIcon className="w-4 h-4 shrink-0 mt-0.5" />
+                              <span>Data pengembalian sudah terkirim. Menunggu konfirmasi admin bahwa kendaraan telah kembali.</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <TripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                              <TripDataCard label="Pengembalian"  km={b.kmReturn} fuel={b.fuelReturn} emoney={b.eMoneyEnd} />
+                            </div>
+                            <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
+                            <PhotoDisplay label="Foto Setelah Digunakan" src={bookingPhotos.post} />
+                          </div>
                         )}
 
                         {b.status === 'Selesai' && (
@@ -387,7 +418,7 @@ function DepartureSection({ onConfirm }) {
     ? `Unggah ${4 - filledPhotos} foto lagi`
     : !allFieldsFilled
     ? 'Lengkapi data keberangkatan'
-    : 'Konfirmasi Serah Terima & Mulai Perjalanan'
+    : 'Kirim Data Keberangkatan'
 
   return (
     <div className="space-y-3">
@@ -461,7 +492,7 @@ function ReturnSection({ booking, onConfirm }) {
     ? `Unggah ${4 - filledPhotos} foto lagi`
     : !allFieldsFilled
     ? 'Lengkapi data pengembalian'
-    : 'Tandai Perjalanan Selesai'
+    : 'Kirim Data Pengembalian'
 
   return (
     <div className="space-y-3">
