@@ -61,8 +61,18 @@ export default function App() {
     }, ...prev])
   }
 
-  function updateStatus(id, status) {
-    setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b))
+  function rejectBooking(id) {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Ditolak' } : b))
+  }
+
+  function approveBooking(id, driverInfo) {
+    setBookings(prev => prev.map(b =>
+      b.id === id ? { ...b, status: 'Menunggu Persetujuan Kepala Bagian', ...driverInfo } : b
+    ))
+  }
+
+  function approveKepala(id) {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Menunggu Serah Terima' } : b))
   }
 
   function uploadPrePhoto(id, { photos, km, fuel, emoney }) {
@@ -73,6 +83,10 @@ export default function App() {
     ))
   }
 
+  function verifyDeparture(id) {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Sedang Digunakan' } : b))
+  }
+
   function uploadPostPhoto(id, { photos, km, fuel, emoney }) {
     setBookings(prev => prev.map(b =>
       b.id === id
@@ -81,11 +95,11 @@ export default function App() {
     ))
   }
 
-  function verifyDeparture(id) {
-    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Sedang Digunakan' } : b))
+  function verifyReturn(id) {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Menunggu Persetujuan Akhir Kepala Bagian' } : b))
   }
 
-  function verifyReturn(id) {
+  function approveKepalaFinal(id) {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Selesai' } : b))
   }
 
@@ -113,9 +127,12 @@ export default function App() {
               <AdminModuleView
                 module={module}
                 bookings={bookings}
-                onUpdateStatus={updateStatus}
+                onReject={rejectBooking}
+                onApprove={approveBooking}
+                onApproveKepala={approveKepala}
                 onVerifyDeparture={verifyDeparture}
                 onVerifyReturn={verifyReturn}
+                onApproveKepalaFinal={approveKepalaFinal}
                 adminUser={adminUser}
               />
             </AppShell>
@@ -128,7 +145,7 @@ export default function App() {
   )
 }
 
-function AdminModuleView({ module, bookings, onUpdateStatus, onVerifyDeparture, onVerifyReturn, adminUser }) {
+function AdminModuleView({ module, bookings, onReject, onApprove, onApproveKepala, onVerifyDeparture, onVerifyReturn, onApproveKepalaFinal, adminUser }) {
   switch (module) {
     case 'dashboard':       return <DashboardView adminName={adminUser.name} />
     case 'kegiatan':        return <KegiatanView />
@@ -139,7 +156,7 @@ function AdminModuleView({ module, bookings, onUpdateStatus, onVerifyDeparture, 
     case 'pengguna':        return <PenggunaView />
     case 'pengaturan':      return <PengaturanView />
     case 'log-api':         return <LogApiView />
-    default:                return <AdminView bookings={bookings} onUpdateStatus={onUpdateStatus} onVerifyDeparture={onVerifyDeparture} onVerifyReturn={onVerifyReturn} />
+    default:                return <AdminView bookings={bookings} onReject={onReject} onApprove={onApprove} onApproveKepala={onApproveKepala} onVerifyDeparture={onVerifyDeparture} onVerifyReturn={onVerifyReturn} onApproveKepalaFinal={onApproveKepalaFinal} />
   }
 }
 

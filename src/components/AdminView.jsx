@@ -4,10 +4,12 @@ import { CheckIcon, XIcon, ClockIcon, CameraIcon, ImageIcon } from './Icons'
 
 const ALL_STATUSES = [
   'Menunggu Konfirmasi',
+  'Menunggu Persetujuan Kepala Bagian',
   'Menunggu Serah Terima',
   'Menunggu Verifikasi Keberangkatan',
   'Sedang Digunakan',
   'Menunggu Verifikasi Pengembalian',
+  'Menunggu Persetujuan Akhir Kepala Bagian',
   'Selesai',
   'Ditolak',
 ]
@@ -29,7 +31,7 @@ function formatDateTime(dt) {
   })
 }
 
-export default function AdminView({ bookings, onUpdateStatus, onVerifyDeparture, onVerifyReturn }) {
+export default function AdminView({ bookings, onReject, onApprove, onApproveKepala, onVerifyDeparture, onVerifyReturn, onApproveKepalaFinal }) {
   // filter is the single source of truth for status — shared by tabs AND dropdown
   const [filter,     setFilter]     = useState('Semua')
   const [search,     setSearch]     = useState('')
@@ -49,16 +51,9 @@ export default function AdminView({ bookings, onUpdateStatus, onVerifyDeparture,
     return matchStatus && matchSearch
   })
 
-  const pendingCount = bookings.filter(b => b.status === 'Menunggu Konfirmasi').length
-  const aktifCount   = bookings.filter(b => ['Menunggu Serah Terima', 'Menunggu Verifikasi Keberangkatan', 'Sedang Digunakan', 'Menunggu Verifikasi Pengembalian'].includes(b.status)).length
+  const pendingCount = bookings.filter(b => ['Menunggu Konfirmasi', 'Menunggu Persetujuan Kepala Bagian'].includes(b.status)).length
+  const aktifCount   = bookings.filter(b => ['Menunggu Serah Terima', 'Menunggu Verifikasi Keberangkatan', 'Sedang Digunakan', 'Menunggu Verifikasi Pengembalian', 'Menunggu Persetujuan Akhir Kepala Bagian'].includes(b.status)).length
   const selesaiCount = bookings.filter(b => b.status === 'Selesai').length
-
-  function handleSetujui(id) {
-    onUpdateStatus(id, 'Menunggu Serah Terima')
-  }
-  function handleTolak(id) {
-    onUpdateStatus(id, 'Ditolak')
-  }
 
   return (
     <div>
@@ -212,10 +207,12 @@ export default function AdminView({ bookings, onUpdateStatus, onVerifyDeparture,
         <BookingDetailModal
           booking={selectedBooking}
           onClose={() => setSelectedId(null)}
-          onSetujui={() => handleSetujui(selectedBooking.id)}
-          onTolak={() => handleTolak(selectedBooking.id)}
+          onApprove={(driverInfo) => { onApprove(selectedBooking.id, driverInfo); setSelectedId(null) }}
+          onTolak={() => { onReject(selectedBooking.id); setSelectedId(null) }}
+          onApproveKepala={() => { onApproveKepala(selectedBooking.id); setSelectedId(null) }}
           onVerifyDeparture={() => { onVerifyDeparture(selectedBooking.id); setSelectedId(null) }}
           onVerifyReturn={() => { onVerifyReturn(selectedBooking.id); setSelectedId(null) }}
+          onApproveKepalaFinal={() => { onApproveKepalaFinal(selectedBooking.id); setSelectedId(null) }}
         />
       )}
     </div>
@@ -253,8 +250,11 @@ function StatCard({ label, count, color, bg }) {
 
 /* ─── Detail modal ─────────────────────────────────────────── */
 
-function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak, onVerifyDeparture, onVerifyReturn }) {
+function BookingDetailModal({ booking: b, onClose, onApprove, onTolak, onApproveKepala, onVerifyDeparture, onVerifyReturn, onApproveKepalaFinal }) {
   const photos = b.photos ?? {}
+  const [driverName,  setDriverName]  = useState('')
+  const [driverPhone, setDriverPhone] = useState('')
+  const canApprove = b.needDriver !== 'dengan' || (driverName.trim() !== '' && driverPhone.trim() !== '')
 
   return (
     <div
@@ -305,6 +305,44 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak, onVerifyD
           </section>
 
           {/* Status-specific content */}
+          {b.status === 'Menunggu Konfirmasi' && b.needDriver === 'dengan' && (
+            <section className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Penugasan Pengemudi</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-3">
+                <p className="text-xs text-amber-700">Peminjam meminta pengemudi. Isi data pengemudi sebelum menyetujui.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Nama Pengemudi</label>
+                    <input value={driverName} onChange={e => setDriverName(e.target.value)}
+                      placeholder="cth. Agus Supriadi"
+                      className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-xs outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-all bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">No. WhatsApp</label>
+                    <input value={driverPhone} onChange={e => setDriverPhone(e.target.value)}
+                      placeholder="cth. 0812-3456-7890"
+                      className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-xs outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-all bg-white" />
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {b.status === 'Menunggu Persetujuan Kepala Bagian' && (
+            <section className="space-y-3">
+              <StatusNote icon={<CheckIcon className="w-4 h-4" />} color="yellow">
+                Admin telah menyetujui. Menunggu persetujuan Kepala Bagian untuk melanjutkan proses.
+              </StatusNote>
+              {b.driverName && (
+                <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5 text-xs space-y-1">
+                  <p className="font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Pengemudi Ditugaskan</p>
+                  <p className="text-gray-700 font-medium">{b.driverName}</p>
+                  {b.driverPhone && <p className="text-gray-400">WA: {b.driverPhone}</p>}
+                </div>
+              )}
+            </section>
+          )}
+
           {b.status === 'Menunggu Serah Terima' && (
             <StatusNote icon={<CameraIcon className="w-4 h-4" />} color="blue">
               Menunggu karyawan mengisi data dan foto kondisi kendaraan sebelum berangkat.
@@ -349,6 +387,21 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak, onVerifyD
             </section>
           )}
 
+          {b.status === 'Menunggu Persetujuan Akhir Kepala Bagian' && (
+            <section className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Verifikasi Akhir Kepala Bagian</p>
+              <StatusNote icon={<CheckIcon className="w-4 h-4" />} color="teal">
+                Admin telah memverifikasi pengembalian. Menunggu konfirmasi akhir Kepala Bagian.
+              </StatusNote>
+              <div className="grid grid-cols-2 gap-3">
+                <AdminTripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                <AdminTripDataCard label="Pengembalian"  km={b.kmReturn} fuel={b.fuelReturn} emoney={b.eMoneyEnd} />
+              </div>
+              <PhotoDisplay label="Foto Sebelum Digunakan" src={photos.pre} />
+              <PhotoDisplay label="Foto Setelah Digunakan" src={photos.post} />
+            </section>
+          )}
+
           {b.status === 'Selesai' && (
             <section className="space-y-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dokumentasi Kendaraan</p>
@@ -371,26 +424,42 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak, onVerifyD
 
         {/* Modal footer — actions */}
         {b.status === 'Menunggu Konfirmasi' && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 flex-shrink-0">
-            <button
-              onClick={onTolak}
-              className="flex items-center gap-2 bg-white hover:bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
-            >
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
+            <button onClick={onTolak}
+              className="flex items-center gap-2 bg-white hover:bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
               <XIcon className="w-4 h-4" />
               Tolak
             </button>
             <button
-              onClick={onSetujui}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
-            >
+              onClick={() => onApprove({ driverName: driverName.trim() || null, driverPhone: driverPhone.trim() || null })}
+              disabled={!canApprove}
+              className={`flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-xl transition-colors ${
+                canApprove
+                  ? 'bg-green-600 hover:bg-green-700 active:bg-green-800 text-white cursor-pointer'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}>
               <CheckIcon className="w-4 h-4" />
-              Setujui Permohonan
+              Setujui &amp; Teruskan ke Kepala Bagian
+            </button>
+          </div>
+        )}
+
+        {b.status === 'Menunggu Persetujuan Kepala Bagian' && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
+            <button onClick={onClose}
+              className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
+              Tutup
+            </button>
+            <button onClick={onApproveKepala}
+              className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
+              <CheckIcon className="w-4 h-4" />
+              Setujui (Kepala Bagian)
             </button>
           </div>
         )}
 
         {b.status === 'Menunggu Verifikasi Keberangkatan' && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 flex-shrink-0">
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
             <button onClick={onClose}
               className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
               Tutup
@@ -404,21 +473,35 @@ function BookingDetailModal({ booking: b, onClose, onSetujui, onTolak, onVerifyD
         )}
 
         {b.status === 'Menunggu Verifikasi Pengembalian' && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 flex-shrink-0">
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
             <button onClick={onClose}
               className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
               Tutup
             </button>
             <button onClick={onVerifyReturn}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
+              className="flex items-center gap-2 bg-fuchsia-600 hover:bg-fuchsia-700 active:bg-fuchsia-800 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
               <CheckIcon className="w-4 h-4" />
-              Konfirmasi Pengembalian
+              Verifikasi Pengembalian
             </button>
           </div>
         )}
 
-        {!['Menunggu Konfirmasi', 'Menunggu Verifikasi Keberangkatan', 'Menunggu Verifikasi Pengembalian'].includes(b.status) && (
-          <div className="px-6 py-4 border-t border-gray-100 flex justify-end flex-shrink-0">
+        {b.status === 'Menunggu Persetujuan Akhir Kepala Bagian' && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
+            <button onClick={onClose}
+              className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
+              Tutup
+            </button>
+            <button onClick={onApproveKepalaFinal}
+              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
+              <CheckIcon className="w-4 h-4" />
+              Tandai Selesai (Kepala Bagian)
+            </button>
+          </div>
+        )}
+
+        {!['Menunggu Konfirmasi', 'Menunggu Persetujuan Kepala Bagian', 'Menunggu Verifikasi Keberangkatan', 'Menunggu Verifikasi Pengembalian', 'Menunggu Persetujuan Akhir Kepala Bagian'].includes(b.status) && (
+          <div className="px-6 py-4 border-t border-gray-100 flex justify-end shrink-0">
             <button onClick={onClose}
               className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer">
               Tutup
@@ -579,7 +662,9 @@ function StatusNote({ icon, color, children }) {
   const styles = {
     blue:   'bg-blue-50 border-blue-200 text-blue-700',
     orange: 'bg-orange-50 border-orange-200 text-orange-700',
+    yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700',
     violet: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700',
+    teal:   'bg-teal-50 border-teal-200 text-teal-700',
   }
   return (
     <div className={`flex items-start gap-2.5 border rounded-xl px-4 py-3 text-sm ${styles[color]}`}>

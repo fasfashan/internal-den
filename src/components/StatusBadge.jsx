@@ -3,6 +3,10 @@ const STATUS_CONFIG = {
     ring: 'bg-amber-50 text-amber-700 ring-amber-200',
     dot:  'bg-amber-400',
   },
+  'Menunggu Persetujuan Kepala Bagian': {
+    ring: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+    dot:  'bg-yellow-400',
+  },
   'Menunggu Serah Terima': {
     ring: 'bg-blue-50 text-blue-700 ring-blue-200',
     dot:  'bg-blue-500',
@@ -18,6 +22,10 @@ const STATUS_CONFIG = {
   'Menunggu Verifikasi Pengembalian': {
     ring: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200',
     dot:  'bg-fuchsia-500',
+  },
+  'Menunggu Persetujuan Akhir Kepala Bagian': {
+    ring: 'bg-teal-50 text-teal-700 ring-teal-200',
+    dot:  'bg-teal-500',
   },
   'Selesai': {
     ring: 'bg-green-50 text-green-700 ring-green-200',

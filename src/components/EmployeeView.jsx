@@ -17,7 +17,7 @@ const FUEL_LEVELS = ['E', '1/4', '1/2', '3/4', 'F']
 
 const EMPTY_FORM = {
   name: '',
-  driverName: '',
+  needDriver: '',
   division: '',
   carType: '',
   plateNumber: '',
@@ -59,9 +59,9 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
 
   function validate() {
     const e = {}
-    if (!form.name.trim())        e.name        = 'Nama peminjam wajib diisi'
-    if (!form.driverName.trim())  e.driverName  = 'Nama pengemudi wajib diisi'
-    if (!form.division)           e.division    = 'Unit kerja wajib dipilih'
+    if (!form.name.trim())   e.name       = 'Nama peminjam wajib diisi'
+    if (!form.needDriver)    e.needDriver = 'Pilih opsi pengemudi'
+    if (!form.division)      e.division   = 'Unit kerja wajib dipilih'
     if (!form.carType)            e.carType     = 'Jenis mobil wajib dipilih'
     if (!form.plateNumber.trim()) e.plateNumber = 'Nomor polisi wajib diisi'
     if (!form.destination.trim()) e.destination = 'Tujuan wajib diisi'
@@ -131,11 +131,28 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
               </Field>
             </div>
 
-            {/* Nama Pengemudi */}
-            <Field label="Nama Pengemudi" error={errors.driverName}>
-              <input name="driverName" value={form.driverName} onChange={handleChange}
-                placeholder="cth. Agus Supriadi (boleh sama dengan peminjam)"
-                className={inputClass(errors.driverName)} />
+            {/* Opsi Pengemudi */}
+            <Field label="Pengemudi" error={errors.needDriver}>
+              <div className="flex gap-3">
+                {[
+                  { value: 'tanpa', label: 'Tanpa Pengemudi', desc: 'Peminjam mengemudi sendiri' },
+                  { value: 'dengan', label: 'Dengan Pengemudi', desc: 'Admin akan menugaskan pengemudi' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setForm(f => ({ ...f, needDriver: opt.value })); if (errors.needDriver) setErrors(er => ({ ...er, needDriver: undefined })) }}
+                    className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                      form.needDriver === opt.value
+                        ? 'border-brand-400 bg-brand-50'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <span className={`text-sm font-medium ${form.needDriver === opt.value ? 'text-brand-700' : 'text-gray-700'}`}>{opt.label}</span>
+                    <span className="text-xs text-gray-400 mt-0.5">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
             </Field>
 
             {/* Jenis Mobil + Nomor Polisi */}
@@ -248,7 +265,14 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
                         {/* Info ringkas booking */}
                         <div className="rounded-xl bg-white border border-gray-200 px-3 py-2.5 text-xs text-gray-500 space-y-1">
                           <p><span className="font-medium text-gray-600">Kendaraan:</span> {b.carType} · {b.plateNumber}</p>
-                          <p><span className="font-medium text-gray-600">Pengemudi:</span> {b.driverName}</p>
+                          <p>
+                            <span className="font-medium text-gray-600">Pengemudi: </span>
+                            {b.needDriver === 'dengan'
+                              ? b.driverName
+                                ? <>{b.driverName}{b.driverPhone ? <span className="text-gray-400"> · WA {b.driverPhone}</span> : null}</>
+                                : <span className="text-amber-500 italic">Belum ditugaskan oleh admin</span>
+                              : 'Peminjam sendiri'}
+                          </p>
                           <p><span className="font-medium text-gray-600">Keperluan:</span> {b.purpose}</p>
                         </div>
 
