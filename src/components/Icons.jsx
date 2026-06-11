@@ -222,6 +222,17 @@ export function ChevronDownIcon({ className }) {
   )
 }
 
+export function TruckIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <rect x="1" y="3" width="15" height="13" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 8h4l3 4v5h-7V8z" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  )
+}
+
 export function AttachmentIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

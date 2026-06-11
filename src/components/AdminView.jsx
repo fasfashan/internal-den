@@ -289,8 +289,16 @@ function BookingDetailModal({ booking: b, onClose, onApprove, onTolak, onApprove
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
               <Detail label="Nama Peminjam"            value={b.name} />
               <Detail label="Unit Kerja"               value={b.division} />
-              <Detail label="Nama Pengemudi"           value={b.driverName ?? '-'} />
-              <Detail label="Jenis Mobil"              value={b.carType ? `${b.carType} · ${b.plateNumber}` : '-'} />
+              <Detail label="Pengemudi" value={
+                b.needDriver === 'dengan'
+                  ? b.driverName ? `${b.driverName}${b.driverPhone ? ` · WA ${b.driverPhone}` : ''}` : 'Belum ditugaskan'
+                  : 'Tanpa pengemudi'
+              } />
+              <Detail label="Kendaraan" value={
+                b.vehicles?.length > 0
+                  ? b.vehicles.map(v => `${v.name} · ${v.plateNumber}`).join(', ')
+                  : b.carType ? `${b.carType} · ${b.plateNumber}` : '-'
+              } />
               <Detail label="Tujuan Perjalanan"        value={b.destination} span />
               <Detail label="Keperluan / Tujuan Dinas" value={b.purpose}     span />
               <Detail

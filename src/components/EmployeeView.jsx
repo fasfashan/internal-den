@@ -3,28 +3,35 @@ import StatusBadge from './StatusBadge'
 import { ClockIcon, MapPinIcon, CameraIcon, CheckIcon, XIcon, ImageIcon } from './Icons'
 
 const UNIT_KERJA = [
-   'Sekretariat Eksekutif Dewan Ekonomi Nasional',
+  'Sekretariat Eksekutif Dewan Ekonomi Nasional',
   'Direktorat Eksekutif Bidang Strategi dan Kebijakan Ekonomi',
   'Direktorat Eksekutif Bidang Percepatan Program Prioritas Ekonomi',
   'Direktorat Eksekutif Bidang Sinkronisasi Kebijakan Program Prioritas Ekonomi',
   'Direktorat Eksekutif Bidang Pemantauan dan Evaluasi Program Prioritas Ekonomi',
- 
   'Sekretariat Dewan Ekonomi Nasional',
 ]
 
-const CAR_TYPES = ['Zenix', 'Veloz', 'Xpander']
 const FUEL_LEVELS = ['E', '1/4', '1/2', '3/4', 'F']
 
+const LOCKED_STATUSES = [
+  'Menunggu Konfirmasi',
+  'Menunggu Persetujuan Kepala Bagian',
+  'Menunggu Serah Terima',
+  'Menunggu Verifikasi Keberangkatan',
+  'Sedang Digunakan',
+  'Menunggu Verifikasi Pengembalian',
+  'Menunggu Persetujuan Akhir Kepala Bagian',
+]
+
 const EMPTY_FORM = {
-  name: '',
+  name:       '',
   needDriver: '',
-  division: '',
-  carType: '',
-  plateNumber: '',
+  division:   '',
+  vehicles:   [],   // [{ id, name, plateNumber }]
   destination: '',
-  dateStart: '',
-  dateEnd: '',
-  purpose: '',
+  dateStart:   '',
+  dateEnd:     '',
+  purpose:     '',
 }
 
 const NEEDS_ACTION = ['Menunggu Serah Terima', 'Sedang Digunakan']
@@ -44,32 +51,42 @@ const smallSelect = [
 
 function formatDateTime(dt) {
   if (!dt) return '-'
-  const d = new Date(dt)
-  return d.toLocaleString('id-ID', {
+  return new Date(dt).toLocaleString('id-ID', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
 }
 
-export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onUploadPostPhoto }) {
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [errors, setErrors] = useState({})
-  const [submitted, setSubmitted] = useState(false)
-  const [expanded, setExpanded] = useState(null)
+function vehicleLabel(b) {
+  if (b.vehicles?.length > 0) {
+    return b.vehicles.map(v => `${v.name} · ${v.plateNumber}`).join(', ')
+  }
+  if (b.carType) return `${b.carType} · ${b.plateNumber}`
+  return '-'
+}
+
+export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onUploadPostPhoto, vehicles = [] }) {
+  const [form,      setForm]      = useState(EMPTY_FORM)
+  const [errors,    setErrors]    = useState({})
+  const [activeTab, setActiveTab] = useState('form')
+  const [expanded,  setExpanded]  = useState(null)
+
+  const actionCount = bookings.filter(b =>
+    NEEDS_ACTION.includes(b.status) || WAITING_ADMIN.includes(b.status)
+  ).length
 
   function validate() {
     const e = {}
-    if (!form.name.trim())   e.name       = 'Nama peminjam wajib diisi'
-    if (!form.needDriver)    e.needDriver = 'Pilih opsi pengemudi'
-    if (!form.division)      e.division   = 'Unit kerja wajib dipilih'
-    if (!form.carType)            e.carType     = 'Jenis mobil wajib dipilih'
-    if (!form.plateNumber.trim()) e.plateNumber = 'Nomor polisi wajib diisi'
-    if (!form.destination.trim()) e.destination = 'Tujuan wajib diisi'
-    if (!form.dateStart)          e.dateStart   = 'Waktu berangkat wajib diisi'
-    if (!form.dateEnd)            e.dateEnd     = 'Waktu kembali wajib diisi'
+    if (!form.name.trim())          e.name       = 'Nama peminjam wajib diisi'
+    if (!form.needDriver)           e.needDriver = 'Pilih opsi pengemudi'
+    if (!form.division)             e.division   = 'Unit kerja wajib dipilih'
+    if (form.vehicles.length === 0) e.vehicles   = 'Pilih minimal 1 kendaraan'
+    if (!form.destination.trim())   e.destination = 'Tujuan wajib diisi'
+    if (!form.dateStart)            e.dateStart  = 'Waktu berangkat wajib diisi'
+    if (!form.dateEnd)              e.dateEnd    = 'Waktu kembali wajib diisi'
     if (form.dateStart && form.dateEnd && form.dateEnd <= form.dateStart)
       e.dateEnd = 'Waktu kembali harus setelah waktu berangkat'
-    if (!form.purpose.trim())     e.purpose     = 'Keperluan wajib diisi'
+    if (!form.purpose.trim())       e.purpose    = 'Keperluan wajib diisi'
     return e
   }
 
@@ -81,260 +98,310 @@ export default function EmployeeView({ onSubmit, bookings, onUploadPrePhoto, onU
 
   function handleSubmit(e) {
     e.preventDefault()
-    const e2 = validate()
-    if (Object.keys(e2).length > 0) { setErrors(e2); return }
+    const errs = validate()
+    if (Object.keys(errs).length > 0) { setErrors(errs); return }
     onSubmit(form)
     setForm(EMPTY_FORM)
     setErrors({})
-    setSubmitted(true)
-    setTimeout(() => setSubmitted(false), 4000)
-  }
-
-  function toggleExpanded(id) {
-    setExpanded(prev => prev === id ? null : id)
+    setActiveTab('riwayat')
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+    <div>
+      {/* ── Tabs ── */}
+      <div className="flex items-center gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
+        {[
+          { id: 'form',    label: 'Ajukan Permohonan' },
+          { id: 'riwayat', label: 'Riwayat Permohonan' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+              activeTab === tab.id
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+            {tab.id === 'riwayat' && actionCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-brand-400 text-white text-[10px] font-bold flex items-center justify-center">
+                {actionCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-      {/* ── Form ── */}
-      <div className="lg:col-span-3">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100">
-            <h2 className="text-base font-semibold text-gray-900">Permohonan Peminjaman Kendaraan</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Lengkapi formulir sesuai kebutuhan perjalanan dinas</p>
-          </div>
-
-          {submitted && (
-            <div className="mx-6 mt-5 flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
-              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Permohonan berhasil diajukan. Menunggu persetujuan admin.
+      {/* ── Form Tab ── */}
+      {activeTab === 'form' && (
+        <div className="max-w-2xl">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900">Permohonan Peminjaman Kendaraan</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Lengkapi formulir sesuai kebutuhan perjalanan dinas</p>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
 
-            {/* Nama Peminjam + Unit Kerja */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Field label="Nama Peminjam" error={errors.name}>
-                <input name="name" value={form.name} onChange={handleChange}
-                  placeholder="cth. Budi Santoso" className={inputClass(errors.name)} />
-              </Field>
-              <Field label="Unit Kerja" error={errors.division}>
-                <select name="division" value={form.division} onChange={handleChange}
-                  className={inputClass(errors.division)}>
-                  <option value="">Pilih unit kerja</option>
-                  {UNIT_KERJA.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </Field>
-            </div>
-
-            {/* Opsi Pengemudi */}
-            <Field label="Pengemudi" error={errors.needDriver}>
-              <div className="flex gap-3">
-                {[
-                  { value: 'tanpa', label: 'Tanpa Pengemudi', desc: 'Peminjam mengemudi sendiri' },
-                  { value: 'dengan', label: 'Dengan Pengemudi', desc: 'Admin akan menugaskan pengemudi' },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => { setForm(f => ({ ...f, needDriver: opt.value })); if (errors.needDriver) setErrors(er => ({ ...er, needDriver: undefined })) }}
-                    className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                      form.needDriver === opt.value
-                        ? 'border-brand-400 bg-brand-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <span className={`text-sm font-medium ${form.needDriver === opt.value ? 'text-brand-700' : 'text-gray-700'}`}>{opt.label}</span>
-                    <span className="text-xs text-gray-400 mt-0.5">{opt.desc}</span>
-                  </button>
-                ))}
+              {/* Nama Peminjam + Unit Kerja */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <Field label="Nama Peminjam" error={errors.name}>
+                  <input name="name" value={form.name} onChange={handleChange}
+                    placeholder="cth. Budi Santoso" className={inputClass(errors.name)} />
+                </Field>
+                <Field label="Unit Kerja" error={errors.division}>
+                  <select name="division" value={form.division} onChange={handleChange}
+                    className={inputClass(errors.division)}>
+                    <option value="">Pilih unit kerja</option>
+                    {UNIT_KERJA.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </Field>
               </div>
-            </Field>
 
-            {/* Jenis Mobil + Nomor Polisi */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Field label="Jenis Mobil" error={errors.carType}>
-                <select name="carType" value={form.carType} onChange={handleChange}
-                  className={inputClass(errors.carType)}>
-                  <option value="">Pilih jenis mobil</option>
-                  {CAR_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </Field>
-              <Field label="Nomor Polisi" error={errors.plateNumber}>
-                <input name="plateNumber" value={form.plateNumber} onChange={handleChange}
-                  placeholder="cth. B 1234 XYZ" className={inputClass(errors.plateNumber)} />
-              </Field>
-            </div>
-
-            {/* Tujuan */}
-            <Field label="Tujuan Perjalanan" error={errors.destination}>
-              <input name="destination" value={form.destination} onChange={handleChange}
-                placeholder="cth. Kementerian Keuangan RI, Jakarta Pusat"
-                className={inputClass(errors.destination)} />
-            </Field>
-
-            {/* Waktu */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Field label="Waktu Berangkat" error={errors.dateStart}>
-                <input type="datetime-local" name="dateStart" value={form.dateStart}
-                  onChange={handleChange} className={inputClass(errors.dateStart)} />
-              </Field>
-              <Field label="Waktu Kembali" error={errors.dateEnd}>
-                <input type="datetime-local" name="dateEnd" value={form.dateEnd}
-                  onChange={handleChange} className={inputClass(errors.dateEnd)} />
-              </Field>
-            </div>
-
-            {/* Keperluan */}
-            <Field label="Keperluan / Tujuan Dinas" error={errors.purpose}>
-              <textarea name="purpose" value={form.purpose} onChange={handleChange}
-                rows={3} placeholder="Jelaskan keperluan dan tujuan perjalanan dinas..."
-                className={`${inputClass(errors.purpose)} resize-none`} />
-            </Field>
-
-            <div className="pt-1">
-              <button type="submit"
-                className="w-full bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white font-medium py-2.5 px-4 rounded-xl transition-colors cursor-pointer">
-                Ajukan Permohonan
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* ── Riwayat ── */}
-      <div className="lg:col-span-2">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100">
-            <h2 className="text-base font-semibold text-gray-900">Riwayat Permohonan</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Pantau status permohonan Anda</p>
-          </div>
-
-          {bookings.length === 0 ? (
-            <div className="px-6 py-12 text-center text-gray-400 text-sm">Belum ada permohonan</div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {bookings.map(b => {
-                const isExpanded = expanded === b.id
-                const needsAction  = NEEDS_ACTION.includes(b.status)
-                const waitingAdmin = WAITING_ADMIN.includes(b.status)
-                const bookingPhotos = b.photos ?? {}
-
-                return (
-                  <li key={b.id}>
-                    <button
-                      onClick={() => toggleExpanded(b.id)}
-                      className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-1.5">
-                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                          <MapPinIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-900 truncate">{b.destination}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {needsAction && (
-                            <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" />
-                          )}
-                          {waitingAdmin && (
-                            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse flex-shrink-0" />
-                          )}
-                          <StatusBadge status={b.status} />
-                          <svg
-                            className={`w-3.5 h-3.5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                          >
-                            <polyline points="6 9 12 15 18 9" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                        <ClockIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span>{formatDateTime(b.dateStart)}</span>
-                        <span className="text-gray-300">–</span>
-                        <span>{formatDateTime(b.dateEnd)}</span>
-                      </div>
+              {/* Opsi Pengemudi */}
+              <Field label="Pengemudi" error={errors.needDriver}>
+                <div className="flex gap-3">
+                  {[
+                    { value: 'tanpa',  label: 'Tanpa Pengemudi',  desc: 'Peminjam mengemudi sendiri' },
+                    { value: 'dengan', label: 'Dengan Pengemudi', desc: 'Admin akan menugaskan pengemudi' },
+                  ].map(opt => (
+                    <button key={opt.value} type="button"
+                      onClick={() => { setForm(f => ({ ...f, needDriver: opt.value })); if (errors.needDriver) setErrors(er => ({ ...er, needDriver: undefined })) }}
+                      className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                        form.needDriver === opt.value
+                          ? 'border-brand-400 bg-brand-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}>
+                      <span className={`text-sm font-medium ${form.needDriver === opt.value ? 'text-brand-700' : 'text-gray-700'}`}>{opt.label}</span>
+                      <span className="text-xs text-gray-400 mt-0.5">{opt.desc}</span>
                     </button>
+                  ))}
+                </div>
+              </Field>
 
-                    {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50 px-4 pb-5 pt-4 space-y-3">
+              {/* Vehicle Selector */}
+              <Field label="Pilih Kendaraan" error={errors.vehicles}>
+                <p className="text-xs text-gray-400 mb-2.5">
+                  Dapat memilih lebih dari 1 kendaraan untuk perjalanan rombongan
+                </p>
+                <VehicleSelector
+                  vehicles={vehicles}
+                  bookings={bookings}
+                  selected={form.vehicles}
+                  onChange={v => { setForm(f => ({ ...f, vehicles: v })); if (errors.vehicles) setErrors(er => ({ ...er, vehicles: undefined })) }}
+                />
+                {vehicles.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-2 italic">Belum ada kendaraan terdaftar. Hubungi admin untuk menambahkan armada.</p>
+                )}
+              </Field>
 
-                        {/* Info ringkas booking */}
-                        <div className="rounded-xl bg-white border border-gray-200 px-3 py-2.5 text-xs text-gray-500 space-y-1">
-                          <p><span className="font-medium text-gray-600">Kendaraan:</span> {b.carType} · {b.plateNumber}</p>
-                          <p>
-                            <span className="font-medium text-gray-600">Pengemudi: </span>
-                            {b.needDriver === 'dengan'
-                              ? b.driverName
-                                ? <>{b.driverName}{b.driverPhone ? <span className="text-gray-400"> · WA {b.driverPhone}</span> : null}</>
-                                : <span className="text-amber-500 italic">Belum ditugaskan oleh admin</span>
-                              : 'Peminjam sendiri'}
-                          </p>
-                          <p><span className="font-medium text-gray-600">Keperluan:</span> {b.purpose}</p>
-                        </div>
+              {/* Tujuan */}
+              <Field label="Tujuan Perjalanan" error={errors.destination}>
+                <input name="destination" value={form.destination} onChange={handleChange}
+                  placeholder="cth. Kementerian Keuangan RI, Jakarta Pusat"
+                  className={inputClass(errors.destination)} />
+              </Field>
 
-                        {b.status === 'Menunggu Serah Terima' && (
-                          <DepartureSection
-                            onConfirm={data => onUploadPrePhoto(b.id, data)}
-                          />
-                        )}
+              {/* Waktu */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <Field label="Waktu Berangkat" error={errors.dateStart}>
+                  <input type="datetime-local" name="dateStart" value={form.dateStart}
+                    onChange={handleChange} className={inputClass(errors.dateStart)} />
+                </Field>
+                <Field label="Waktu Kembali" error={errors.dateEnd}>
+                  <input type="datetime-local" name="dateEnd" value={form.dateEnd}
+                    onChange={handleChange} className={inputClass(errors.dateEnd)} />
+                </Field>
+              </div>
 
-                        {b.status === 'Menunggu Verifikasi Keberangkatan' && (
-                          <div className="space-y-3">
-                            <div className="flex items-start gap-2.5 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5 text-xs text-orange-700">
-                              <ClockIcon className="w-4 h-4 shrink-0 mt-0.5" />
-                              <span>Data keberangkatan sudah terkirim. Menunggu verifikasi admin sebelum kendaraan berangkat.</span>
-                            </div>
-                            <TripDataCard label="Data Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
-                            <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
-                          </div>
-                        )}
+              {/* Keperluan */}
+              <Field label="Keperluan / Tujuan Dinas" error={errors.purpose}>
+                <textarea name="purpose" value={form.purpose} onChange={handleChange}
+                  rows={3} placeholder="Jelaskan keperluan dan tujuan perjalanan dinas..."
+                  className={`${inputClass(errors.purpose)} resize-none`} />
+              </Field>
 
-                        {b.status === 'Sedang Digunakan' && (
-                          <ReturnSection
-                            booking={b}
-                            onConfirm={data => onUploadPostPhoto(b.id, data)}
-                          />
-                        )}
-
-                        {b.status === 'Menunggu Verifikasi Pengembalian' && (
-                          <div className="space-y-3">
-                            <div className="flex items-start gap-2.5 bg-fuchsia-50 border border-fuchsia-200 rounded-xl px-3 py-2.5 text-xs text-fuchsia-700">
-                              <ClockIcon className="w-4 h-4 shrink-0 mt-0.5" />
-                              <span>Data pengembalian sudah terkirim. Menunggu konfirmasi admin bahwa kendaraan telah kembali.</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <TripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
-                              <TripDataCard label="Pengembalian"  km={b.kmReturn} fuel={b.fuelReturn} emoney={b.eMoneyEnd} />
-                            </div>
-                            <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
-                            <PhotoDisplay label="Foto Setelah Digunakan" src={bookingPhotos.post} />
-                          </div>
-                        )}
-
-                        {b.status === 'Selesai' && (
-                          <div className="space-y-3">
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Ringkasan Perjalanan</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <TripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
-                              <TripDataCard label="Pengembalian"  km={b.kmReturn} fuel={b.fuelReturn} emoney={b.eMoneyEnd} />
-                            </div>
-                            <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
-                            <PhotoDisplay label="Foto Setelah Digunakan" src={bookingPhotos.post} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+              <div className="pt-1">
+                <button type="submit"
+                  className="w-full bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white font-medium py-2.5 px-4 rounded-xl transition-colors cursor-pointer">
+                  Ajukan Permohonan
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Riwayat Tab ── */}
+      {activeTab === 'riwayat' && (
+        <div className="max-w-2xl">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900">Riwayat Permohonan</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Pantau status permohonan Anda</p>
+            </div>
+
+            {bookings.length === 0 ? (
+              <div className="px-6 py-12 text-center text-gray-400 text-sm">Belum ada permohonan</div>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {bookings.map(b => {
+                  const isExpanded   = expanded === b.id
+                  const needsAction  = NEEDS_ACTION.includes(b.status)
+                  const waitingAdmin = WAITING_ADMIN.includes(b.status)
+                  const bookingPhotos = b.photos ?? {}
+
+                  return (
+                    <li key={b.id}>
+                      <button
+                        onClick={() => setExpanded(prev => prev === b.id ? null : b.id)}
+                        className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-1.5">
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <MapPinIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span className="text-sm font-medium text-gray-900 truncate">{b.destination}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {needsAction  && <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse shrink-0" />}
+                            {waitingAdmin && <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse shrink-0" />}
+                            <StatusBadge status={b.status} />
+                            <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <polyline points="6 9 12 15 18 9" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <ClockIcon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{formatDateTime(b.dateStart)}</span>
+                          <span className="text-gray-300">–</span>
+                          <span>{formatDateTime(b.dateEnd)}</span>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50 px-4 pb-5 pt-4 space-y-3">
+
+                          {/* Info ringkas booking */}
+                          <div className="rounded-xl bg-white border border-gray-200 px-3 py-2.5 text-xs text-gray-500 space-y-1">
+                            <p><span className="font-medium text-gray-600">Kendaraan:</span> {vehicleLabel(b)}</p>
+                            <p>
+                              <span className="font-medium text-gray-600">Pengemudi: </span>
+                              {b.needDriver === 'dengan'
+                                ? b.driverName
+                                  ? <>{b.driverName}{b.driverPhone ? <span className="text-gray-400"> · WA {b.driverPhone}</span> : null}</>
+                                  : <span className="text-amber-500 italic">Belum ditugaskan oleh admin</span>
+                                : 'Peminjam sendiri'}
+                            </p>
+                            <p><span className="font-medium text-gray-600">Keperluan:</span> {b.purpose}</p>
+                          </div>
+
+                          {b.status === 'Menunggu Serah Terima' && (
+                            <DepartureSection onConfirm={data => onUploadPrePhoto(b.id, data)} />
+                          )}
+
+                          {b.status === 'Menunggu Verifikasi Keberangkatan' && (
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-2.5 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5 text-xs text-orange-700">
+                                <ClockIcon className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>Data keberangkatan sudah terkirim. Menunggu verifikasi admin sebelum kendaraan berangkat.</span>
+                              </div>
+                              <TripDataCard label="Data Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                              <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
+                            </div>
+                          )}
+
+                          {b.status === 'Sedang Digunakan' && (
+                            <ReturnSection booking={b} onConfirm={data => onUploadPostPhoto(b.id, data)} />
+                          )}
+
+                          {b.status === 'Menunggu Verifikasi Pengembalian' && (
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-2.5 bg-fuchsia-50 border border-fuchsia-200 rounded-xl px-3 py-2.5 text-xs text-fuchsia-700">
+                                <ClockIcon className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>Data pengembalian sudah terkirim. Menunggu konfirmasi admin bahwa kendaraan telah kembali.</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <TripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                                <TripDataCard label="Pengembalian"  km={b.kmReturn}  fuel={b.fuelReturn}  emoney={b.eMoneyEnd} />
+                              </div>
+                              <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
+                              <PhotoDisplay label="Foto Setelah Digunakan" src={bookingPhotos.post} />
+                            </div>
+                          )}
+
+                          {b.status === 'Selesai' && (
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Ringkasan Perjalanan</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <TripDataCard label="Keberangkatan" km={b.kmDepart} fuel={b.fuelDepart} emoney={b.eMoneyStart} />
+                                <TripDataCard label="Pengembalian"  km={b.kmReturn}  fuel={b.fuelReturn}  emoney={b.eMoneyEnd} />
+                              </div>
+                              <PhotoDisplay label="Foto Sebelum Digunakan" src={bookingPhotos.pre} />
+                              <PhotoDisplay label="Foto Setelah Digunakan" src={bookingPhotos.post} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Vehicle selector ───────────────────────────────────────── */
+
+function VehicleSelector({ vehicles, bookings, selected, onChange }) {
+  const lockedPlates = new Set(
+    bookings
+      .filter(b => LOCKED_STATUSES.includes(b.status))
+      .flatMap(b => {
+        if (b.vehicles?.length) return b.vehicles.map(v => v.plateNumber)
+        if (b.plateNumber) return [b.plateNumber]
+        return []
+      })
+  )
+
+  function toggle(v) {
+    const already = selected.some(s => s.id === v.id)
+    onChange(already ? selected.filter(s => s.id !== v.id) : [...selected, v])
+  }
+
+  if (vehicles.length === 0) return null
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      {vehicles.map(v => {
+        const locked     = lockedPlates.has(v.plateNumber)
+        const isSelected = selected.some(s => s.id === v.id)
+        return (
+          <button key={v.id} type="button" disabled={locked} onClick={() => toggle(v)}
+            className={`flex flex-col items-start p-3 rounded-xl border-2 text-left transition-all ${
+              locked
+                ? 'border-gray-100 bg-gray-50 cursor-not-allowed'
+                : isSelected
+                ? 'border-brand-400 bg-brand-50 cursor-pointer'
+                : 'border-gray-200 hover:border-gray-300 bg-white cursor-pointer'
+            }`}>
+            <div className="flex items-center gap-1.5 w-full">
+              {isSelected && !locked && <CheckIcon className="w-3.5 h-3.5 text-brand-500 shrink-0" />}
+              <span className={`text-sm font-semibold truncate ${locked ? 'text-gray-300' : isSelected ? 'text-brand-700' : 'text-gray-700'}`}>
+                {v.name}
+              </span>
+            </div>
+            <span className={`text-xs mt-0.5 ${locked ? 'text-gray-300' : 'text-gray-400'}`}>{v.plateNumber}</span>
+            {locked && <span className="text-[10px] text-red-400 font-medium mt-1">Sedang digunakan</span>}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -384,7 +451,7 @@ function usePhotoSlots() {
   return { previews, refs, handleFile, handleRemove }
 }
 
-/* ─── Photo slot grid (shared) ───────────────────────────────── */
+/* ─── Photo slot grid ────────────────────────────────────────── */
 
 function PhotoSlotGrid({ previews, refs, confirmed, onFile, onRemove }) {
   return (
@@ -422,8 +489,8 @@ function PhotoSlotGrid({ previews, refs, confirmed, onFile, onRemove }) {
 
 function DepartureSection({ onConfirm }) {
   const { previews, refs, handleFile, handleRemove } = usePhotoSlots()
-  const [km,     setKm]     = useState('')
-  const [fuel,   setFuel]   = useState('')
+  const [km, setKm] = useState('')
+  const [fuel, setFuel] = useState('')
   const [emoney, setEmoney] = useState('')
   const [confirmed, setConfirmed] = useState(false)
 
@@ -438,15 +505,12 @@ function DepartureSection({ onConfirm }) {
     onConfirm({ photos: previews, km, fuel, emoney })
   }
 
-  const btnLabel = !allPhotosFilled
-    ? `Unggah ${4 - filledPhotos} foto lagi`
-    : !allFieldsFilled
-    ? 'Lengkapi data keberangkatan'
+  const btnLabel = !allPhotosFilled ? `Unggah ${4 - filledPhotos} foto lagi`
+    : !allFieldsFilled ? 'Lengkapi data keberangkatan'
     : 'Kirim Data Keberangkatan'
 
   return (
     <div className="space-y-3">
-      {/* Operational fields */}
       <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
         <p className="text-xs font-semibold text-gray-800">Data Keberangkatan</p>
         <div className="grid grid-cols-2 gap-2">
@@ -469,20 +533,15 @@ function DepartureSection({ onConfirm }) {
             placeholder="cth. Rp 150.000" disabled={confirmed} className={smallInput} />
         </div>
       </div>
-
-      {/* Photos */}
       <div className="rounded-xl border border-gray-200 bg-white p-3">
         <p className="text-xs font-semibold text-gray-800 mb-0.5">Foto Kondisi Sebelum Digunakan</p>
         <p className="text-xs text-gray-400 mb-3">Unggah 4 foto kendaraan dari berbagai sisi</p>
         <PhotoSlotGrid previews={previews} refs={refs} confirmed={confirmed} onFile={handleFile} onRemove={handleRemove} />
       </div>
-
       {!confirmed && (
         <button onClick={handleConfirm} disabled={!canConfirm}
           className={`w-full flex items-center justify-center gap-2 text-xs font-medium py-2.5 rounded-lg transition-colors ${
-            canConfirm
-              ? 'bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white cursor-pointer'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            canConfirm ? 'bg-brand-400 hover:bg-brand-500 text-white cursor-pointer' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}>
           <CheckIcon className="w-3.5 h-3.5" />
           {btnLabel}
@@ -496,8 +555,8 @@ function DepartureSection({ onConfirm }) {
 
 function ReturnSection({ booking, onConfirm }) {
   const { previews, refs, handleFile, handleRemove } = usePhotoSlots()
-  const [km,     setKm]     = useState('')
-  const [fuel,   setFuel]   = useState('')
+  const [km, setKm] = useState('')
+  const [fuel, setFuel] = useState('')
   const [emoney, setEmoney] = useState('')
   const [confirmed, setConfirmed] = useState(false)
 
@@ -512,22 +571,14 @@ function ReturnSection({ booking, onConfirm }) {
     onConfirm({ photos: previews, km, fuel, emoney })
   }
 
-  const btnLabel = !allPhotosFilled
-    ? `Unggah ${4 - filledPhotos} foto lagi`
-    : !allFieldsFilled
-    ? 'Lengkapi data pengembalian'
+  const btnLabel = !allPhotosFilled ? `Unggah ${4 - filledPhotos} foto lagi`
+    : !allFieldsFilled ? 'Lengkapi data pengembalian'
     : 'Kirim Data Pengembalian'
 
   return (
     <div className="space-y-3">
-      {/* Pre-trip summary */}
-      <TripDataCard label="Data Keberangkatan"
-        km={booking.kmDepart} fuel={booking.fuelDepart} emoney={booking.eMoneyStart} />
-
-      {/* Pre-trip photos */}
+      <TripDataCard label="Data Keberangkatan" km={booking.kmDepart} fuel={booking.fuelDepart} emoney={booking.eMoneyStart} />
       <PhotoDisplay label="Foto Sebelum Digunakan" src={booking.photos?.pre} />
-
-      {/* Return fields */}
       <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
         <p className="text-xs font-semibold text-gray-800">Data Pengembalian</p>
         <div className="grid grid-cols-2 gap-2">
@@ -550,20 +601,15 @@ function ReturnSection({ booking, onConfirm }) {
             placeholder="cth. Rp 50.000" disabled={confirmed} className={smallInput} />
         </div>
       </div>
-
-      {/* Return photos */}
       <div className="rounded-xl border border-gray-200 bg-white p-3">
         <p className="text-xs font-semibold text-gray-800 mb-0.5">Foto Kondisi Setelah Digunakan</p>
         <p className="text-xs text-gray-400 mb-3">Unggah 4 foto kendaraan dari berbagai sisi</p>
         <PhotoSlotGrid previews={previews} refs={refs} confirmed={confirmed} onFile={handleFile} onRemove={handleRemove} />
       </div>
-
       {!confirmed && (
         <button onClick={handleConfirm} disabled={!canConfirm}
           className={`w-full flex items-center justify-center gap-2 text-xs font-medium py-2.5 rounded-lg transition-colors ${
-            canConfirm
-              ? 'bg-brand-400 hover:bg-brand-500 active:bg-brand-600 text-white cursor-pointer'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            canConfirm ? 'bg-brand-400 hover:bg-brand-500 text-white cursor-pointer' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}>
           <CheckIcon className="w-3.5 h-3.5" />
           {btnLabel}
@@ -580,24 +626,15 @@ function TripDataCard({ label, km, fuel, emoney }) {
     <div className="rounded-xl bg-white border border-gray-200 p-3">
       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{label}</p>
       <div className="grid grid-cols-3 gap-1 text-xs">
-        <div>
-          <p className="text-gray-400">Kilometer</p>
-          <p className="font-semibold text-gray-700">{km ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-gray-400">BBM</p>
-          <p className="font-semibold text-gray-700">{fuel ?? '-'}</p>
-        </div>
-        <div>
-          <p className="text-gray-400">E-Money</p>
-          <p className="font-semibold text-gray-700 truncate">{emoney ?? '-'}</p>
-        </div>
+        <div><p className="text-gray-400">Kilometer</p><p className="font-semibold text-gray-700">{km ?? '-'}</p></div>
+        <div><p className="text-gray-400">BBM</p><p className="font-semibold text-gray-700">{fuel ?? '-'}</p></div>
+        <div><p className="text-gray-400">E-Money</p><p className="font-semibold text-gray-700 truncate">{emoney ?? '-'}</p></div>
       </div>
     </div>
   )
 }
 
-/* ─── Photo display (completed) ──────────────────────────────── */
+/* ─── Photo display ──────────────────────────────────────────── */
 
 function PhotoDisplay({ label, src }) {
   const photos = Array.isArray(src) ? src.filter(Boolean) : []
@@ -611,9 +648,7 @@ function PhotoDisplay({ label, src }) {
           {photos.map((photo, i) => (
             <div key={i} className="relative rounded overflow-hidden">
               <img src={photo} alt={`${label} ${i + 1}`} className="w-full h-20 object-cover" />
-              <span className="absolute bottom-1 left-1 text-[10px] font-medium bg-black/40 text-white px-1.5 py-0.5 rounded">
-                {i + 1}
-              </span>
+              <span className="absolute bottom-1 left-1 text-[10px] font-medium bg-black/40 text-white px-1.5 py-0.5 rounded">{i + 1}</span>
             </div>
           ))}
         </div>
@@ -641,8 +676,7 @@ function Field({ label, error, children }) {
 
 function inputClass(hasError) {
   return [
-    'w-full px-3.5 py-2.5 rounded-xl border text-sm text-gray-900 outline-none transition-all',
-    'placeholder:text-gray-400 bg-white',
+    'w-full px-3.5 py-2.5 rounded-xl border text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 bg-white',
     hasError
       ? 'border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100'
       : 'border-gray-300 focus:border-brand-400 focus:ring-2 focus:ring-brand-100',

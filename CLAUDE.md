@@ -24,14 +24,15 @@ Aplikasi web untuk mengelola peminjaman kendaraan dinas di lingkungan Dewan Ekon
 src/
 ├── components/
 │   ├── AdminView.jsx        # Modul peminjaman sisi admin (tabel, modal detail, aksi)
-│   ├── EmployeeView.jsx     # Modul peminjaman sisi karyawan (form + riwayat)
+│   ├── EmployeeView.jsx     # Modul peminjaman sisi karyawan (tab form + riwayat, vehicle selector)
 │   ├── Sidebar.jsx          # Navigasi desktop + BottomNav mobile
 │   ├── StatusBadge.jsx      # Badge warna per status
 │   ├── Modal.jsx            # Modal dasar reusable
 │   ├── ConfirmDialog.jsx    # Dialog konfirmasi hapus
 │   └── Icons.jsx            # Semua ikon SVG sebagai komponen React
-├── views/                   # Modul-modul SIAPPro (admin only)
+├── views/                   # Modul-modul admin
 │   ├── DashboardView.jsx
+│   ├── KendaraanView.jsx    # Master armada kendaraan (CRUD, cek ketersediaan)
 │   ├── KegiatanView.jsx
 │   ├── MasterKegiatanView.jsx
 │   ├── DokumentasiView.jsx
@@ -45,7 +46,7 @@ src/
 ├── pages/
 │   ├── EmployeeLoginPage.jsx
 │   └── AdminLoginPage.jsx
-├── App.jsx                  # Root: routing, state global bookings, semua mutasi data
+├── App.jsx                  # Root: routing, state global bookings + vehicles, semua mutasi data
 └── index.css                # Brand color tokens (@theme)
 ```
 
@@ -108,7 +109,7 @@ Selesai
 
 | Tahap | Field |
 |---|---|
-| Pengajuan | name, division, needDriver, carType, plateNumber, destination, dateStart, dateEnd, purpose |
+| Pengajuan | name, division, needDriver, vehicles (array), destination, dateStart, dateEnd, purpose |
 | Persetujuan Admin | driverName, driverPhone (jika needDriver = 'dengan') |
 | Serah Terima | kmDepart, fuelDepart, eMoneyStart, photos.pre (4 foto) |
 | Pengembalian | kmReturn, fuelReturn, eMoneyEnd, photos.post (4 foto) |
@@ -132,8 +133,7 @@ Selesai
   name:         string,          // nama peminjam
   division:     string,          // unit kerja
   needDriver:   'tanpa'|'dengan',
-  carType:      string,          // Zenix | Veloz | Xpander
-  plateNumber:  string,
+  vehicles:     { id: number, name: string, plateNumber: string }[],  // ≥1 kendaraan
   destination:  string,
   dateStart:    string,          // datetime-local
   dateEnd:      string,
@@ -162,6 +162,16 @@ Selesai
 }
 ```
 
+## Shape Objek Vehicle (Master Armada)
+
+```js
+{
+  id:          number,   // Date.now() atau seed integer
+  name:        string,   // cth. "Toyota Veloz"
+  plateNumber: string,   // cth. "B 5678 DEN"
+}
+```
+
 ---
 
 ## Persistensi Data (Prototipe)
@@ -179,6 +189,7 @@ Semua data disimpan di `localStorage`. Key yang digunakan:
 | `den_dokumentasi` | Data dokumentasi |
 | `den_lpd` | Data LPD |
 | `den_persidangan` | Data persidangan |
+| `den_vehicles` | Master data armada kendaraan |
 | `den_pengguna` | Data pengguna |
 
 ### Foto
@@ -257,6 +268,7 @@ POST   /api/bookings/{id}/photos              # Upload foto ke storage
 - **Foto**: Kirim sebagai `multipart/form-data` ke endpoint dedicated, simpan di cloud storage, kembalikan URL.
 - **Notifikasi**: Setiap perubahan status perlu notifikasi (email/WhatsApp) ke pihak yang relevan — terutama saat admin assign driver (kirim ke driver via WA).
 - **Unit Kerja**: Daftar unit kerja saat ini hardcoded di `EmployeeView.jsx`. Di produksi, ambil dari API (`GET /api/unit-kerja`).
-- **Kendaraan**: Jenis mobil dan nomor polisi saat ini input manual. Di produksi, buat master data kendaraan (`GET /api/vehicles`) agar bisa dicek ketersediaan.
+- **Kendaraan**: Master armada dikelola admin via `KendaraanView`. Peminjam bisa pilih lebih dari 1 kendaraan sekaligus (rombongan). Di produksi: `GET /api/vehicles` (dengan field `is_available`), `POST /api/vehicles`, `PUT /api/vehicles/{id}`, `DELETE /api/vehicles/{id}`. Ketersediaan dihitung dari booking aktif, bukan field statis.
+- **Fleet booking**: Satu booking menyimpan array `vehicles`. Semua kendaraan dalam array dikunci selama booking aktif (status bukan Selesai/Ditolak). Di produksi, perlu pivot table `booking_vehicles`.
 - **Audit Trail**: Simpan history perubahan status per booking (who, what, when) untuk keperluan pelaporan.
 - **Pagination**: Endpoint list booking perlu pagination — bisa banyak data di produksi.

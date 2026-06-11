@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CarIcon, LogOutIcon, GridIcon, CalendarIcon, FolderIcon, FileTextIcon, GavelIcon, UsersIcon, SettingsIcon, ActivityIcon, ScrollTextIcon, ChevronDownIcon } from './Icons'
+import { CarIcon, TruckIcon, LogOutIcon, GridIcon, CalendarIcon, FolderIcon, FileTextIcon, GavelIcon, UsersIcon, SettingsIcon, ActivityIcon, ScrollTextIcon, ChevronDownIcon } from './Icons'
 
 const EMPLOYEE_NAV = [
   { id: 'peminjaman', label: 'Peminjaman Kendaraan', shortLabel: 'Peminjaman', icon: CarIcon },
@@ -7,6 +7,7 @@ const EMPLOYEE_NAV = [
 
 const ADMIN_NAV_PEMINJAMAN = [
   { id: 'peminjaman', label: 'Peminjaman Kendaraan', shortLabel: 'Kendaraan', icon: CarIcon },
+  { id: 'kendaraan',  label: 'Armada Kendaraan',    shortLabel: 'Armada',    icon: TruckIcon },
 ]
 
 const ADMIN_NAV_SIAPPRO = [
@@ -24,10 +25,10 @@ const ADMIN_NAV_SIAPPRO = [
 const SIAPPRO_IDS = new Set(ADMIN_NAV_SIAPPRO.map(n => n.id))
 
 const ADMIN_BOTTOM_NAV = [
-  { id: 'dashboard',   shortLabel: 'Dashboard', icon: GridIcon },
-  { id: 'peminjaman',  shortLabel: 'Kendaraan', icon: CarIcon },
-  { id: 'kegiatan',    shortLabel: 'Kegiatan',  icon: CalendarIcon },
-  { id: 'dokumentasi', shortLabel: 'Dokumen',   icon: FolderIcon },
+  { id: 'dashboard',  shortLabel: 'Dashboard', icon: GridIcon },
+  { id: 'peminjaman', shortLabel: 'Kendaraan', icon: CarIcon },
+  { id: 'kendaraan',  shortLabel: 'Armada',    icon: TruckIcon },
+  { id: 'kegiatan',   shortLabel: 'Kegiatan',  icon: CalendarIcon },
 ]
 
 function NavButton({ id, label, icon: Icon, active, onClick, indent }) {

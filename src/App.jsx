@@ -7,6 +7,7 @@ import AdminView from './components/AdminView'
 import Sidebar, { BottomNav } from './components/Sidebar'
 import { LogOutIcon } from './components/Icons'
 import DashboardView from './views/DashboardView'
+import KendaraanView from './views/KendaraanView'
 import KegiatanView from './views/KegiatanView'
 import MasterKegiatanView from './views/MasterKegiatanView'
 import DokumentasiView from './views/DokumentasiView'
@@ -15,6 +16,12 @@ import PersidanganView from './views/PersidanganView'
 import PenggunaView from './views/PenggunaView'
 import PengaturanView from './views/PengaturanView'
 import LogApiView from './views/LogApiView'
+
+const SEED_VEHICLES = [
+  { id: 1, name: 'Toyota Zenix',   plateNumber: 'B 1234 DEN' },
+  { id: 2, name: 'Toyota Veloz',   plateNumber: 'B 5678 DEN' },
+  { id: 3, name: 'Mitsubishi Xpander', plateNumber: 'B 9012 DEN' },
+]
 
 const MOCK_USERS = {
   employee: { role: 'employee', name: 'Budi Santoso', email: 'budi.santoso@den.go.id' },
@@ -35,6 +42,7 @@ export default function App() {
   const [adminUser,    setAdminUser]    = useState(() => readLS('den_admin_user', null))
   const [module,       setModule]       = useState(() => readLS('den_module', 'dashboard'))
   const [bookings,     setBookings]     = useState(() => readLS('den_bookings', []))
+  const [vehicles,     setVehicles]     = useState(() => readLS('den_vehicles', SEED_VEHICLES))
 
   useEffect(() => {
     if (employeeUser) localStorage.setItem('den_employee_user', JSON.stringify(employeeUser))
@@ -50,6 +58,7 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem('den_bookings', JSON.stringify(bookings)) } catch { /* quota — photos too large */ }
   }, [bookings])
+  useEffect(() => { localStorage.setItem('den_vehicles', JSON.stringify(vehicles)) }, [vehicles])
 
   function addBooking(booking) {
     setBookings(prev => [{
@@ -99,6 +108,10 @@ export default function App() {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Menunggu Persetujuan Akhir Kepala Bagian' } : b))
   }
 
+  function addVehicle(v)    { setVehicles(prev => [...prev, { ...v, id: Date.now() }]) }
+  function removeVehicle(id){ setVehicles(prev => prev.filter(v => v.id !== id)) }
+  function updateVehicle(id, data) { setVehicles(prev => prev.map(v => v.id === id ? { ...v, ...data } : v)) }
+
   function approveKepalaFinal(id) {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Selesai' } : b))
   }
@@ -112,6 +125,7 @@ export default function App() {
               <EmployeeView
                 onSubmit={addBooking}
                 bookings={bookings}
+                vehicles={vehicles}
                 onUploadPrePhoto={uploadPrePhoto}
                 onUploadPostPhoto={uploadPostPhoto}
               />
@@ -127,12 +141,16 @@ export default function App() {
               <AdminModuleView
                 module={module}
                 bookings={bookings}
+                vehicles={vehicles}
                 onReject={rejectBooking}
                 onApprove={approveBooking}
                 onApproveKepala={approveKepala}
                 onVerifyDeparture={verifyDeparture}
                 onVerifyReturn={verifyReturn}
                 onApproveKepalaFinal={approveKepalaFinal}
+                onAddVehicle={addVehicle}
+                onRemoveVehicle={removeVehicle}
+                onUpdateVehicle={updateVehicle}
                 adminUser={adminUser}
               />
             </AppShell>
@@ -145,9 +163,10 @@ export default function App() {
   )
 }
 
-function AdminModuleView({ module, bookings, onReject, onApprove, onApproveKepala, onVerifyDeparture, onVerifyReturn, onApproveKepalaFinal, adminUser }) {
+function AdminModuleView({ module, bookings, vehicles, onReject, onApprove, onApproveKepala, onVerifyDeparture, onVerifyReturn, onApproveKepalaFinal, onAddVehicle, onRemoveVehicle, onUpdateVehicle, adminUser }) {
   switch (module) {
     case 'dashboard':       return <DashboardView adminName={adminUser.name} />
+    case 'kendaraan':       return <KendaraanView vehicles={vehicles} bookings={bookings} onAdd={onAddVehicle} onRemove={onRemoveVehicle} onUpdate={onUpdateVehicle} />
     case 'kegiatan':        return <KegiatanView />
     case 'master-kegiatan': return <MasterKegiatanView />
     case 'dokumentasi':     return <DokumentasiView />
